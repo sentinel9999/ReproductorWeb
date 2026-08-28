@@ -1,208 +1,307 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { usePlayerStore } from '@/store/usePlaystore';
 import { Track } from '@/types/rokola';
-import { Radio as RadioIcon, Play, Pause, Signal, Volume2, Globe, Sparkles } from 'lucide-react';
+import { 
+  Radio, 
+  Play, 
+  Pause, 
+  Search, 
+  Globe, 
+  Volume2, 
+  Loader2, 
+  Sparkles,
+  Signal
+} from 'lucide-react';
 
-interface RadioStation {
-  id: string;
+interface RadioStationAPI {
+  stationuuid: string;
   name: string;
-  genre: string;
-  frequency: string;
-  listeners: string;
-  coverUrl: string;
-  streamTrack: Track;
+  url_resolved: string;
+  favicon: string;
+  tags: string;
+  country: string;
+  countrycode: string;
+  votes: number;
+  clickcount: number;
 }
 
-const RADIO_STATIONS: RadioStation[] = [
-  {
-    id: 'rad-1',
-    name: 'Rokola FM - Éxitos Globales',
-    genre: 'Top 40 & Pop',
-    frequency: '98.5 FM',
-    listeners: '14.2k en vivo',
-    coverUrl: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=400&h=400&fit=crop',
-    streamTrack: {
-      id: 'stream-1',
-      title: 'Rokola Hits en Vivo',
-      artist: 'Transmisión Oficial',
-      duration: 0,
-      coverUrl: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300&h=300&fit=crop',
-      audioUrl: 'https://www.bensound.com/bensound-music/bensound-sunny.mp3',
-    },
-  },
-  {
-    id: 'rad-2',
-    name: 'Chill & Lo-Fi Lounge',
-    genre: 'Lo-Fi / Beats',
-    frequency: '102.1 FM',
-    listeners: '8.7k en vivo',
-    coverUrl: 'https://images.unsplash.com/photo-1501386761578-eac5c94b800a?w=400&h=400&fit=crop',
-    streamTrack: {
-      id: 'stream-2',
-      title: 'Beats para Trabajar / Estudiar',
-      artist: 'Lo-Fi Station',
-      duration: 0,
-      coverUrl: 'https://images.unsplash.com/photo-1501386761578-eac5c94b800a?w=300&h=300&fit=crop',
-      audioUrl: 'https://www.bensound.com/bensound-music/bensound-acousticbreeze.mp3',
-    },
-  },
-  {
-    id: 'rad-3',
-    name: 'Synth & Electro Club',
-    genre: 'Electrónica / Dance',
-    frequency: '105.7 FM',
-    listeners: '6.1k en vivo',
-    coverUrl: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400&h=400&fit=crop',
-    streamTrack: {
-      id: 'stream-3',
-      title: 'Club Sessions Non-Stop',
-      artist: 'Electronic Waves',
-      duration: 0,
-      coverUrl: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop',
-      audioUrl: 'https://www.bensound.com/bensound-music/bensound-energy.mp3',
-    },
-  },
-  {
-    id: 'rad-4',
-    name: 'Acoustic & Coffee Shop',
-    genre: 'Acústico / Indie',
-    frequency: '92.3 FM',
-    listeners: '4.5k en vivo',
-    coverUrl: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=400&h=400&fit=crop',
-    streamTrack: {
-      id: 'stream-4',
-      title: 'Café Sessions Acústicas',
-      artist: 'Benjamin Tissot Radio',
-      duration: 0,
-      coverUrl: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300&h=300&fit=crop',
-      audioUrl: 'https://www.bensound.com/bensound-music/bensound-acousticbreeze.mp3',
-    },
-  },
+const COUNTRIES = [
+  { code: '', label: 'Cualquier País' },
+  { code: 'MX', label: 'México' },
+  { code: 'ES', label: 'España' },
+  { code: 'AR', label: 'Argentina' },
+  { code: 'CO', label: 'Colombia' },
+  { code: 'US', label: 'Estados Unidos' },
+  { code: 'GB', label: 'Reino Unido' },
+];
+
+const GENRES = [
+  { tag: '', label: 'Todos los estilos' },
+  { tag: 'pop', label: 'Pop' },
+  { tag: 'rock', label: 'Rock' },
+  { tag: 'electronic', label: 'Electrónica' },
+  { tag: 'jazz', label: 'Jazz' },
+  { tag: 'classical', label: 'Clásica' },
+  { tag: 'news', label: 'Noticias / Talk' },
 ];
 
 export default function RadioPage() {
-  const { currentTrack, isPlaying, setTrack, togglePlay } = usePlayerStore();
-  const [selectedStation, setSelectedStation] = useState<RadioStation>(RADIO_STATIONS[0]);
+  const [stations, setStations] = useState<RadioStationAPI[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCountry, setSelectedCountry] = useState('');
+  const [selectedTag, setSelectedTag] = useState('');
 
-  const handleTuneStation = (station: RadioStation) => {
-    setSelectedStation(station);
-    if (currentTrack?.id === station.streamTrack.id) {
-      togglePlay();
-    } else {
-      setTrack(station.streamTrack);
+  const { currentTrack, isPlaying, setTrack, togglePlay } = usePlayerStore();
+
+  const fetchStations = async () => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams();
+      params.append('limit', '30');
+      params.append('hidebroken', 'true');
+      params.append('order', 'clickcount');
+      params.append('reverse', 'true');
+
+      if (searchQuery.trim()) {
+        params.append('name', searchQuery.trim());
+      }
+      if (selectedCountry) {
+        params.append('countrycode', selectedCountry);
+      }
+      if (selectedTag) {
+        params.append('tag', selectedTag);
+      }
+
+      // Servidor público distribuido de Radio Browser API
+      const res = await fetch(`https://de1.api.radio-browser.info/json/stations/search?${params.toString()}`);
+      if (res.ok) {
+        const data: RadioStationAPI[] = await res.json();
+        setStations(data);
+      }
+    } catch (error) {
+      console.error('Error obteniendo estaciones de Radio Browser:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const isCurrentStationPlaying =
-    currentTrack?.id === selectedStation.streamTrack.id && isPlaying;
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchStations();
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [selectedCountry, selectedTag, searchQuery]);
+
+  const handlePlayStation = (station: RadioStationAPI) => {
+    const radioTrack: Track = {
+      id: `radio-${station.stationuuid}`,
+      title: station.name.trim(),
+      artist: station.country ? `${station.country} • Radio en Vivo` : 'Radio en Vivo',
+      duration: 0, // Indica transmisión continua al reproductor
+      coverUrl: station.favicon && station.favicon.startsWith('http')
+        ? station.favicon
+        : 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=400&h=400&fit=crop',
+      audioUrl: station.url_resolved,
+    };
+
+    if (currentTrack?.id === radioTrack.id) {
+      togglePlay();
+    } else {
+      setTrack(radioTrack);
+    }
+  };
+
+  const featuredStation = stations[0];
+  const isFeaturedPlaying = currentTrack?.id === `radio-${featuredStation?.stationuuid}` && isPlaying;
 
   return (
-    <div className="p-6 md:p-10 max-w-7xl mx-auto space-y-10 pb-24">
+    <div className="p-6 md:p-10 max-w-7xl mx-auto space-y-8 pb-28">
       {/* 1. Encabezado */}
-      <header className="flex flex-col gap-1">
-        <div className="flex items-center gap-2 text-green-400 text-sm font-semibold tracking-wide uppercase">
-          <Signal size={16} className="animate-pulse" />
-          <span>Emisoras en directo</span>
+      <div className="space-y-1">
+        <div className="flex items-center gap-2 text-green-400 text-xs font-bold uppercase tracking-widest">
+          <Radio size={16} className="animate-pulse" />
+          <span>Radio Browser API Global</span>
         </div>
         <h1 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight">
-          Radio en Vivo
+          Sintonizador Mundial de Radio
         </h1>
-      </header>
+        <p className="text-zinc-400 text-sm">
+          Explora y escucha en directo miles de transmisiones online gratuitas de todo el mundo.
+        </p>
+      </div>
 
-      {/* 2. Dial Destacado / Sintonizador Principal */}
-      <section className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-950 via-zinc-900 to-zinc-950 border border-emerald-500/30 p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-2xl">
-        <div className="space-y-4 max-w-xl z-10">
-          <div className="flex items-center gap-2">
-            <span className="px-3 py-1 bg-red-500/20 border border-red-500/40 text-red-400 text-xs font-semibold rounded-full flex items-center gap-1.5 uppercase tracking-wider">
-              <span className="w-2 h-2 rounded-full bg-red-400 animate-ping" />
-              Al Aire
-            </span>
-            <span className="text-xs text-zinc-400 font-mono">{selectedStation.frequency}</span>
-          </div>
+      {/* 2. Banner Estación Destacada */}
+      {featuredStation && (
+        <section className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-950/80 via-zinc-900 to-zinc-950 border border-green-500/30 p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-2xl">
+          <div className="space-y-3 z-10 max-w-xl">
+            <div className="flex items-center gap-2">
+              <span className="flex h-2.5 w-2.5 relative">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span>
+              </span>
+              <span className="px-2.5 py-0.5 bg-green-500/10 border border-green-500/40 text-green-400 text-xs font-semibold rounded-full uppercase tracking-wider">
+                Más escuchada hoy
+              </span>
+            </div>
 
-          <div>
-            <h2 className="text-2xl md:text-4xl font-bold text-white leading-tight">
-              {selectedStation.name}
+            <h2 className="text-2xl md:text-3xl font-bold text-white leading-tight truncate">
+              {featuredStation.name}
             </h2>
-            <p className="text-zinc-300 text-sm mt-1">
-              Género: {selectedStation.genre} • {selectedStation.listeners}
+
+            <p className="text-zinc-300 text-sm">
+              {featuredStation.country || 'Internacional'} • Géneros: {featuredStation.tags || 'Varios'}
             </p>
+
+            <div className="pt-2">
+              <button
+                onClick={() => handlePlayStation(featuredStation)}
+                className="flex items-center gap-2 bg-green-500 hover:bg-green-400 text-black font-semibold text-sm px-6 py-2.5 rounded-full transition transform hover:scale-105 active:scale-95 shadow-lg cursor-pointer"
+              >
+                {isFeaturedPlaying ? (
+                  <>
+                    <Pause size={17} fill="black" />
+                    <span>Pausar</span>
+                  </>
+                ) : (
+                  <>
+                    <Play size={17} fill="black" className="ml-0.5" />
+                    <span>Sintonizar</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
 
-          <button
-            onClick={() => handleTuneStation(selectedStation)}
-            className="flex items-center gap-3 bg-green-500 hover:bg-green-400 text-black font-bold px-7 py-3.5 rounded-full transition transform hover:scale-105 active:scale-95 shadow-xl cursor-pointer"
-          >
-            {isCurrentStationPlaying ? (
-              <>
-                <Pause size={20} fill="black" />
-                <span>Pausar Sintonía</span>
-              </>
-            ) : (
-              <>
-                <Play size={20} fill="black" className="ml-0.5" />
-                <span>Sintonizar Emisora</span>
-              </>
-            )}
-          </button>
+          <div className="w-28 h-28 md:w-36 md:h-36 rounded-2xl overflow-hidden shadow-lg border border-zinc-800 bg-zinc-900 flex-shrink-0 flex items-center justify-center p-3">
+            <img
+              src={featuredStation.favicon && featuredStation.favicon.startsWith('http') ? featuredStation.favicon : 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300&h=300&fit=crop'}
+              alt={featuredStation.name}
+              className="w-full h-full object-contain"
+              onError={(e) => {
+                e.currentTarget.src = 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300&h=300&fit=crop';
+              }}
+            />
+          </div>
+        </section>
+      )}
+
+      {/* 3. Filtros: Buscador, Selector de País y Género */}
+      <div className="space-y-4">
+        <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3">
+          {/* Input Buscador */}
+          <div className="relative flex-1">
+            <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Buscar por nombre de emisora..."
+              className="w-full bg-zinc-900 border border-zinc-800 rounded-xl pl-10 pr-4 py-2.5 text-xs text-white placeholder-zinc-500 focus:border-green-500 focus:outline-none transition"
+            />
+          </div>
+
+          {/* Selector de País */}
+          <div className="flex items-center gap-2">
+            <Globe size={16} className="text-zinc-400" />
+            <select
+              value={selectedCountry}
+              onChange={(e) => setSelectedCountry(e.target.value)}
+              className="bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2.5 text-xs text-zinc-200 focus:border-green-500 focus:outline-none cursor-pointer"
+            >
+              {COUNTRIES.map((c) => (
+                <option key={c.code} value={c.code}>
+                  {c.label}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
-        <div className="w-48 h-48 md:w-56 md:h-56 rounded-2xl overflow-hidden border border-zinc-700 shadow-2xl flex-shrink-0 relative">
-          <img
-            src={selectedStation.coverUrl}
-            alt={selectedStation.name}
-            className="w-full h-full object-cover"
-          />
+        {/* Pestañas de Género */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none border-b border-zinc-900">
+          {GENRES.map((g) => (
+            <button
+              key={g.tag}
+              onClick={() => setSelectedTag(g.tag)}
+              className={`px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
+                selectedTag === g.tag
+                  ? 'bg-white text-black'
+                  : 'bg-zinc-900 text-zinc-400 hover:text-white hover:bg-zinc-800'
+              }`}
+            >
+              {g.label}
+            </button>
+          ))}
         </div>
-      </section>
+      </div>
 
-      {/* 3. Parrilla de Estaciones Disponibles */}
-      <section className="space-y-4">
-        <h2 className="text-xl font-bold text-white flex items-center gap-2">
-          <Globe size={20} className="text-green-400" />
-          <span>Diales y Frecuencias Recomendadas</span>
-        </h2>
+      {/* 4. Lista de Resultados */}
+      {loading ? (
+        <div className="py-20 flex flex-col items-center justify-center gap-3 text-zinc-500">
+          <Loader2 size={32} className="animate-spin text-green-500" />
+          <p className="text-xs">Conectando con Radio Browser API...</p>
+        </div>
+      ) : stations.length === 0 ? (
+        <div className="p-12 border border-dashed border-zinc-800 rounded-2xl text-center text-zinc-500 text-xs">
+          No se encontraron estaciones con los filtros seleccionados. Intenta con otro término o país.
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {stations.map((station) => {
+            const isThisPlaying = currentTrack?.id === `radio-${station.stationuuid}` && isPlaying;
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {RADIO_STATIONS.map((station) => {
-            const isActive = currentTrack?.id === station.streamTrack.id && isPlaying;
             return (
               <div
-                key={station.id}
-                onClick={() => handleTuneStation(station)}
-                className={`bg-zinc-900/40 hover:bg-zinc-900/80 p-4 rounded-xl border transition cursor-pointer group flex flex-col justify-between shadow-sm ${
-                  selectedStation.id === station.id
-                    ? 'border-green-500/50 bg-zinc-900/90'
-                    : 'border-zinc-800/60 hover:border-zinc-700'
+                key={station.stationuuid}
+                onClick={() => handlePlayStation(station)}
+                className={`p-4 rounded-xl border transition cursor-pointer group flex items-center justify-between gap-3 shadow-sm ${
+                  isThisPlaying
+                    ? 'border-green-500/60 bg-emerald-950/30'
+                    : 'bg-zinc-900/40 hover:bg-zinc-900/80 border-zinc-800/60 hover:border-zinc-700'
                 }`}
               >
-                <div className="aspect-square mb-3 overflow-hidden rounded-lg relative">
-                  <img
-                    src={station.coverUrl}
-                    alt={station.name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
-                  />
-                  <div className="absolute top-2 left-2 px-2 py-0.5 rounded bg-black/70 backdrop-blur-md text-[10px] font-mono text-zinc-300">
-                    {station.frequency}
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  <div className="w-12 h-12 rounded-lg bg-zinc-950 border border-zinc-800 flex-shrink-0 flex items-center justify-center p-1.5 overflow-hidden">
+                    <img
+                      src={station.favicon && station.favicon.startsWith('http') ? station.favicon : 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=200&h=200&fit=crop'}
+                      alt={station.name}
+                      className="w-full h-full object-contain"
+                      onError={(e) => {
+                        e.currentTarget.src = 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=200&h=200&fit=crop';
+                      }}
+                    />
                   </div>
-                  <div className="absolute bottom-2 right-2 w-9 h-9 bg-green-500 rounded-full flex items-center justify-center text-black opacity-0 group-hover:opacity-100 transition transform translate-y-2 group-hover:translate-y-0 shadow-lg">
-                    {isActive ? <Pause size={16} fill="black" /> : <Play size={16} fill="black" className="ml-0.5" />}
+
+                  <div className="truncate">
+                    <div className="flex items-center gap-1.5">
+                      <Signal size={12} className={isThisPlaying ? 'text-green-400 animate-pulse' : 'text-zinc-500'} />
+                      <h3 className={`font-semibold text-xs truncate ${isThisPlaying ? 'text-green-400' : 'text-white'}`}>
+                        {station.name}
+                      </h3>
+                    </div>
+                    <p className="text-[11px] text-zinc-400 truncate mt-0.5">
+                      {station.country || 'Global'} {station.tags ? `• ${station.tags.split(',')[0]}` : ''}
+                    </p>
                   </div>
                 </div>
 
-                <div>
-                  <h3 className={`font-semibold text-sm truncate ${isActive ? 'text-green-400' : 'text-white'}`}>
-                    {station.name}
-                  </h3>
-                  <p className="text-xs text-zinc-400 mt-0.5">{station.genre}</p>
-                </div>
+                <button
+                  className={`w-8 h-8 rounded-full flex items-center justify-center text-black flex-shrink-0 shadow transition transform ${
+                    isThisPlaying ? 'bg-green-500 scale-100' : 'bg-white group-hover:bg-green-500 group-hover:scale-105'
+                  }`}
+                  aria-label="Reproducir estación"
+                >
+                  {isThisPlaying ? <Pause size={13} fill="black" /> : <Play size={13} fill="black" className="ml-0.5" />}
+                </button>
               </div>
             );
           })}
         </div>
-      </section>
+      )}
     </div>
   );
 }

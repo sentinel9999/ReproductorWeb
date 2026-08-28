@@ -1,0 +1,42 @@
+[
+  {
+    "id": "track-1787942901233",
+    "title": "Years & Years   Desire (Gryffin Remix)   Interscope Records (youtube)",
+    "artist": "Years & Years",
+    "duration": 180,
+    "coverUrl": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTEWMHhgqq6qe6KqJypSzlfWcdmfdyxxAoActXs9IwAla7CgT-bxmaykeI&s=10",
+    "audioUrl": "/api/stream/1787942901218-Years_&_Years_-_Desire_(Gryffin_Remix)_-_Interscope_Records_(youtube).mp3"
+  },
+  {
+    "id": "track-1787942608688",
+    "title": "Tiësto, Oliver Heldens   The Right Song (official video) ft. Natalie La Rose   TiestoVEVO (youtube)",
+    "artist": "Tiesto",
+    "duration": 180,
+    "coverUrl": "https://i.scdn.co/image/ab67616d0000b27397de1962854937501928e7ce",
+    "audioUrl": "/api/stream/1787942608674-Tiësto,_Oliver_Heldens_-_The_Right_Song_(official_video)_ft._Natalie_La_Rose_-_TiestoVEVO_(youtube).mp3"
+  },
+  {
+    "id": "hero-1",
+    "title": "Summer Vibes Deluxe",
+    "artist": "Benjamin Tissot",
+    "duration": 180,
+    "coverUrl": "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=800&h=400&fit=crop",
+    "audioUrl": "https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3"
+  },
+  {
+    "id": "1",
+    "title": "Acoustic Breeze",
+    "artist": "Benjamin Tissot",
+    "duration": 100,
+    "coverUrl": "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300&h=300&fit=crop",
+    "audioUrl": "https://cdn.pixabay.com/download/audio/2022/01/18/audio_d0a13f69d2.mp3"
+  },
+  {
+    "id": "2",
+    "title": "Sunny Beats",
+    "artist": "Bensound",
+    "duration": 140,
+    "coverUrl": "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=300&h=300&fit=crop",
+    "audioUrl": "https://cdn.pixabay.com/download/audio/2021/08/04/audio_0625c1539c.mp3"
+  }
+]

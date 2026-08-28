@@ -1,7 +1,8 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { usePlayerStore } from '@/store/usePlaystore';
-import { Track } from '@/types/rokola';
+import { Track, Album, Artist } from '@/types/rokola';
 import { 
   Play, 
   Pause, 
@@ -12,152 +13,71 @@ import {
   Heart, 
   ListMusic, 
   Library, 
-  ChevronRight 
+  ChevronRight,
+  Loader2
 } from 'lucide-react';
 import Link from 'next/link';
 
-// 1. Canción Destacada (Hero)
-const FEATURED_TRACK: Track = {
-  id: 'hero-1',
-  title: 'Summer Vibes Deluxe',
-  artist: 'Benjamin Tissot',
-  duration: 180,
-  coverUrl: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=800&h=400&fit=crop',
-  audioUrl: 'https://www.bensound.com/bensound-music/bensound-sunny.mp3',
-};
-
-// 2. Playlists del Usuario
-const USER_PLAYLISTS = [
-  {
-    id: 'p1',
-    name: 'Favoritos de la Semana',
-    trackCount: 15,
-    coverUrl: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300&h=300&fit=crop',
-  },
-  {
-    id: 'p2',
-    name: 'Para Concentrarse',
-    trackCount: 32,
-    coverUrl: 'https://images.unsplash.com/photo-1501386761578-eac5c94b800a?w=300&h=300&fit=crop',
-  },
-  {
-    id: 'p3',
-    name: 'Entrenamiento & Gym',
-    trackCount: 24,
-    coverUrl: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=300&h=300&fit=crop',
-  },
-];
-
-// 3. Canciones Recientes
-const RECENT_TRACKS: Track[] = [
-  {
-    id: '1',
-    title: 'Acoustic Breeze',
-    artist: 'Benjamin Tissot',
-    duration: 100,
-    coverUrl: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300&h=300&fit=crop',
-    audioUrl: 'https://www.bensound.com/bensound-music/bensound-acousticbreeze.mp3',
-  },
-  {
-    id: '2',
-    title: 'Sunny Beats',
-    artist: 'Bensound',
-    duration: 140,
-    coverUrl: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=300&h=300&fit=crop',
-    audioUrl: 'https://www.bensound.com/bensound-music/bensound-sunny.mp3',
-  },
-  {
-    id: '3',
-    title: 'Energy Pulse',
-    artist: 'Electronic Waves',
-    duration: 179,
-    coverUrl: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop',
-    audioUrl: 'https://www.bensound.com/bensound-music/bensound-energy.mp3',
-  },
-  {
-    id: '4',
-    title: 'Slow Motion',
-    artist: 'Chillout Lab',
-    duration: 205,
-    coverUrl: 'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=300&h=300&fit=crop',
-    audioUrl: 'https://www.bensound.com/bensound-music/bensound-acousticbreeze.mp3',
-  },
-];
-
-// 4. Artistas Populares
-const POPULAR_ARTISTS = [
-  {
-    id: 'art-1',
-    name: 'Benjamin Tissot',
-    role: 'Compositor / Acústico',
-    avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&h=300&fit=crop',
-  },
-  {
-    id: 'art-2',
-    name: 'Bensound',
-    role: 'Productor Musical',
-    avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=300&fit=crop',
-  },
-  {
-    id: 'art-3',
-    name: 'Electronic Waves',
-    role: 'Dúo Synthwave',
-    avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=300&h=300&fit=crop',
-  },
-  {
-    id: 'art-4',
-    name: 'Chillout Lab',
-    role: 'Banda Lo-Fi / Ambient',
-    avatarUrl: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=300&h=300&fit=crop',
-  },
-];
-
-// 5. Álbumes
-const RECENT_ALBUMS = [
-  {
-    id: 'a1',
-    title: 'Acoustic Memories',
-    artist: 'Benjamin Tissot',
-    year: '2024',
-    coverUrl: 'https://images.unsplash.com/photo-1465847899084-d164df4dedc6?w=300&h=300&fit=crop',
-  },
-  {
-    id: 'a2',
-    title: 'Summer Nights',
-    artist: 'Various Artists',
-    year: '2023',
-    coverUrl: 'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=300&h=300&fit=crop',
-  },
-  {
-    id: 'a3',
-    title: 'Neon Nights',
-    artist: 'Electronic Waves',
-    year: '2024',
-    coverUrl: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300&h=300&fit=crop',
-  },
-  {
-    id: 'a4',
-    title: 'Midnight Jazz',
-    artist: 'The Quartet Club',
-    year: '2023',
-    coverUrl: 'https://images.unsplash.com/photo-1511192336575-5a79af67a629?w=300&h=300&fit=crop',
-  },
-];
-
 export default function Home() {
+  const [tracks, setTracks] = useState<Track[]>([]);
+  const [artists, setArtists] = useState<Artist[]>([]);
+  const [albums, setAlbums] = useState<Partial<Album>[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
   const { currentTrack, isPlaying, setTrack, setQueue, togglePlay } = usePlayerStore();
 
+  useEffect(() => {
+    async function loadHomeData() {
+      try {
+        const [tracksRes, artistsRes, albumsRes] = await Promise.all([
+          fetch('/api/tracks'),
+          fetch('/api/artists'),
+          fetch('/api/albums'),
+        ]);
+
+        const [tracksData, artistsData, albumsData] = await Promise.all([
+          tracksRes.json(),
+          artistsRes.json(),
+          albumsRes.json(),
+        ]);
+
+        setTracks(tracksData);
+        setArtists(artistsData);
+        setAlbums(albumsData);
+      } catch (error) {
+        console.error('Error cargando los datos del inicio:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    loadHomeData();
+  }, []);
+
+  const featuredTrack = tracks[0];
+  const recentTracks = tracks.slice(1);
+
   const handlePlayFeatured = () => {
-    if (currentTrack?.id === FEATURED_TRACK.id) {
+    if (!featuredTrack) return;
+    if (currentTrack?.id === featuredTrack.id) {
       togglePlay();
     } else {
-      setTrack(FEATURED_TRACK);
+      setTrack(featuredTrack);
     }
   };
 
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3 text-zinc-400">
+        <Loader2 className="animate-spin text-green-500" size={32} />
+        <p className="text-sm">Cargando biblioteca y canciones...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 md:p-10 max-w-7xl mx-auto space-y-12 pb-24">
-      {/* 1. Saludo */}
+      {/* 1. Header / Saludo */}
       <header className="flex flex-col gap-1">
         <div className="flex items-center gap-2 text-green-400 text-sm font-semibold tracking-wide uppercase">
           <Sparkles size={16} />
@@ -168,48 +88,50 @@ export default function Home() {
         </h1>
       </header>
 
-      {/* 2. Banner Destacado / Hero */}
-      <section className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-900/60 via-zinc-900 to-zinc-950 border border-emerald-500/20 p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-2xl">
-        <div className="space-y-4 z-10 max-w-xl">
-          <span className="inline-block px-3 py-1 bg-green-500/20 border border-green-500/40 text-green-400 text-xs font-semibold rounded-full uppercase tracking-wider">
-            Recomendado para ti
-          </span>
-          <h2 className="text-2xl md:text-4xl font-bold text-white leading-tight">
-            {FEATURED_TRACK.title}
-          </h2>
-          <p className="text-zinc-300 text-sm md:text-base">
-            Descubre las mejores composiciones y ritmos seleccionados para hoy por {FEATURED_TRACK.artist}.
-          </p>
-          <div className="pt-2">
-            <button
-              onClick={handlePlayFeatured}
-              className="flex items-center gap-2 bg-green-500 hover:bg-green-400 text-black font-semibold px-6 py-3 rounded-full transition transform hover:scale-105 active:scale-95 shadow-lg cursor-pointer"
-            >
-              {currentTrack?.id === FEATURED_TRACK.id && isPlaying ? (
-                <>
-                  <Pause size={18} fill="black" />
-                  <span>Pausar</span>
-                </>
-              ) : (
-                <>
-                  <Play size={18} fill="black" className="ml-0.5" />
-                  <span>Reproducir ahora</span>
-                </>
-              )}
-            </button>
+      {/* 2. Banner Destacado / Hero (Canción cargada desde API) */}
+      {featuredTrack && (
+        <section className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-900/60 via-zinc-900 to-zinc-950 border border-emerald-500/20 p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-2xl">
+          <div className="space-y-4 z-10 max-w-xl">
+            <span className="inline-block px-3 py-1 bg-green-500/20 border border-green-500/40 text-green-400 text-xs font-semibold rounded-full uppercase tracking-wider">
+              Recomendado para ti
+            </span>
+            <h2 className="text-2xl md:text-4xl font-bold text-white leading-tight">
+              {featuredTrack.title}
+            </h2>
+            <p className="text-zinc-300 text-sm md:text-base">
+              Descubre las mejores composiciones y ritmos seleccionados para hoy por {featuredTrack.artist}.
+            </p>
+            <div className="pt-2">
+              <button
+                onClick={handlePlayFeatured}
+                className="flex items-center gap-2 bg-green-500 hover:bg-green-400 text-black font-semibold px-6 py-3 rounded-full transition transform hover:scale-105 active:scale-95 shadow-lg cursor-pointer"
+              >
+                {currentTrack?.id === featuredTrack.id && isPlaying ? (
+                  <>
+                    <Pause size={18} fill="black" />
+                    <span>Pausar</span>
+                  </>
+                ) : (
+                  <>
+                    <Play size={18} fill="black" className="ml-0.5" />
+                    <span>Reproducir ahora</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
-        </div>
 
-        <div className="w-full md:w-64 h-48 rounded-xl overflow-hidden shadow-lg border border-zinc-800 flex-shrink-0">
-          <img
-            src={FEATURED_TRACK.coverUrl}
-            alt={FEATURED_TRACK.title}
-            className="w-full h-full object-cover"
-          />
-        </div>
-      </section>
+          <div className="w-full md:w-64 h-48 rounded-xl overflow-hidden shadow-lg border border-zinc-800 flex-shrink-0">
+            <img
+              src={featuredTrack.coverUrl}
+              alt={featuredTrack.title}
+              className="w-full h-full object-cover"
+            />
+          </div>
+        </section>
+      )}
 
-      {/* 3. Tu Biblioteca y Colecciones */}
+      {/* 3. Accesos Rápidos */}
       <section className="space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -226,7 +148,6 @@ export default function Home() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-          {/* Favoritos */}
           <Link
             href="/playlist/p1"
             className="bg-gradient-to-br from-indigo-900/40 to-zinc-900/80 hover:from-indigo-900/60 hover:to-zinc-900 p-5 rounded-2xl border border-indigo-500/20 hover:border-indigo-500/40 transition flex items-center justify-between group shadow-lg"
@@ -239,15 +160,11 @@ export default function Home() {
                 <h3 className="font-bold text-base text-white group-hover:text-indigo-300 transition">
                   Tus Me Gusta
                 </h3>
-                <p className="text-xs text-zinc-400">48 canciones guardadas</p>
+                <p className="text-xs text-zinc-400">Canciones favoritas</p>
               </div>
-            </div>
-            <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center text-black shadow-md opacity-0 group-hover:opacity-100 transition transform scale-90 group-hover:scale-100">
-              <Play size={16} fill="black" className="ml-0.5" />
             </div>
           </Link>
 
-          {/* Playlists */}
           <Link
             href="/library"
             className="bg-zinc-900/40 hover:bg-zinc-900/80 p-5 rounded-2xl border border-zinc-800/60 hover:border-zinc-700 transition flex items-center justify-between group shadow-sm"
@@ -260,29 +177,31 @@ export default function Home() {
                 <h3 className="font-bold text-base text-white group-hover:text-green-400 transition">
                   Tus Playlists
                 </h3>
-                <p className="text-xs text-zinc-400">{USER_PLAYLISTS.length} listas personalizadas</p>
+                <p className="text-xs text-zinc-400">Listas personalizadas</p>
               </div>
             </div>
             <ChevronRight className="text-zinc-500 group-hover:text-white transition" size={20} />
           </Link>
 
-          {/* Artistas en biblioteca */}
-          <div className="bg-zinc-900/40 hover:bg-zinc-900/80 p-5 rounded-2xl border border-zinc-800/60 hover:border-zinc-700 transition flex items-center justify-between group shadow-sm">
+          <Link
+            href="/albums"
+            className="bg-zinc-900/40 hover:bg-zinc-900/80 p-5 rounded-2xl border border-zinc-800/60 hover:border-zinc-700 transition flex items-center justify-between group shadow-sm"
+          >
             <div className="flex items-center gap-4">
               <div className="w-14 h-14 rounded-xl bg-purple-500/20 border border-purple-500/30 flex items-center justify-center text-purple-400 shadow-md">
                 <Library size={24} />
               </div>
               <div>
-                <h3 className="font-bold text-base text-white">Artistas y Álbumes</h3>
-                <p className="text-xs text-zinc-400">12 seguidos en biblioteca</p>
+                <h3 className="font-bold text-base text-white">Álbumes y Catálogo</h3>
+                <p className="text-xs text-zinc-400">{albums.length} disponibles</p>
               </div>
             </div>
             <ChevronRight className="text-zinc-500 group-hover:text-white transition" size={20} />
-          </div>
+          </Link>
         </div>
       </section>
 
-      {/* 4. Escuchado Recientemente */}
+      {/* 4. Escuchado Recientemente (Cargado desde API) */}
       <section className="space-y-4">
         <div className="flex items-center gap-2">
           <Music className="text-green-400" size={20} />
@@ -290,7 +209,7 @@ export default function Home() {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {RECENT_TRACKS.map((track, index) => {
+          {recentTracks.map((track, index) => {
             const isThisTrackPlaying = currentTrack?.id === track.id && isPlaying;
 
             return (
@@ -313,7 +232,7 @@ export default function Home() {
                 </div>
 
                 <button
-                  onClick={() => setQueue(RECENT_TRACKS, index)}
+                  onClick={() => setQueue(recentTracks, index)}
                   className={`w-9 h-9 bg-green-500 rounded-full flex items-center justify-center text-black shadow-md transition transform group-hover:scale-100 flex-shrink-0 cursor-pointer ${
                     isThisTrackPlaying ? 'opacity-100 scale-100' : 'opacity-0 group-hover:opacity-100 scale-90'
                   }`}
@@ -331,7 +250,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* 5. Artistas Populares */}
+      {/* 5. Artistas Populares (Cargados desde API) */}
       <section className="space-y-4">
         <div className="flex items-center gap-2">
           <Mic2 className="text-green-400" size={20} />
@@ -339,7 +258,7 @@ export default function Home() {
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-5">
-          {POPULAR_ARTISTS.map((artist) => (
+          {artists.map((artist) => (
             <div
               key={artist.id}
               className="bg-zinc-900/40 hover:bg-zinc-900/80 p-4 rounded-xl border border-zinc-800/60 hover:border-zinc-700 transition cursor-pointer group flex flex-col items-center text-center shadow-sm"
@@ -358,7 +277,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* 6. Álbumes y Compilaciones */}
+      {/* 6. Álbumes y Compilaciones (Cargados desde API) */}
       <section className="space-y-4">
         <div className="flex items-center gap-2">
           <Disc className="text-green-400" size={20} />
@@ -366,7 +285,7 @@ export default function Home() {
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-5">
-          {RECENT_ALBUMS.map((album) => (
+          {albums.map((album) => (
             <Link
               key={album.id}
               href={`/album/${album.id}`}

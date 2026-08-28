@@ -4,61 +4,103 @@ import { usePlayerStore } from '@/store/usePlaystore';
 import { Play, Pause, SkipBack, SkipForward, Volume2 } from 'lucide-react';
 
 export default function PlayerBar() {
-  const { currentTrack, isPlaying, togglePlay, nextTrack, prevTrack, currentTime, duration, volume, setVolume } = usePlayerStore();
+  const { 
+    currentTrack, 
+    isPlaying, 
+    togglePlay, 
+    nextTrack, 
+    prevTrack, 
+    currentTime, 
+    duration, 
+    volume, 
+    setVolume 
+  } = usePlayerStore();
 
   if (!currentTrack) return null;
 
   const formatTime = (seconds: number) => {
+    if (!seconds || isNaN(seconds)) return '0:00';
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
     return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
   };
 
+  const isLiveStream = !currentTrack.duration || currentTrack.duration === 0;
+
   return (
-    <div className="fixed bottom-0 left-0 right-0 h-20 bg-zinc-900 border-t border-zinc-800 px-6 flex items-center justify-between z-50 text-white">
-      {/* Info Track */}
-      <div className="flex items-center gap-4 w-1/4 min-w-[180px]">
+    <div className="fixed bottom-0 left-0 right-0 h-20 bg-zinc-950/95 backdrop-blur-md border-t border-zinc-800/80 px-6 flex items-center justify-between z-50 text-white shadow-2xl">
+      {/* 1. Información de la Pista */}
+      <div className="flex items-center gap-3.5 w-1/4 min-w-[180px]">
         <img
-          src={currentTrack.coverUrl || '/placeholder.png'}
+          src={currentTrack.coverUrl || 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300&h=300&fit=crop'}
           alt={currentTrack.title}
-          className="w-12 h-12 rounded object-cover"
+          className="w-12 h-12 rounded-lg object-cover border border-zinc-800/80 flex-shrink-0 bg-zinc-900"
+          onError={(e) => {
+            e.currentTarget.src = 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300&h=300&fit=crop';
+          }}
         />
         <div className="truncate">
-          <p className="text-sm font-semibold truncate">{currentTrack.title}</p>
-          <p className="text-xs text-zinc-400 truncate">{currentTrack.artist}</p>
+          <p className="text-sm font-semibold truncate text-white hover:underline cursor-pointer">
+            {currentTrack.title}
+          </p>
+          <p className="text-xs text-zinc-400 truncate mt-0.5">
+            {currentTrack.artist}
+          </p>
         </div>
       </div>
 
-      {/* Controles y Barra de Progreso */}
+      {/* 2. Controles y Barra de Tiempo / Radio en Vivo */}
       <div className="flex flex-col items-center gap-1.5 w-2/4 max-w-xl">
         <div className="flex items-center gap-4">
-          <button onClick={prevTrack} className="text-zinc-400 hover:text-white transition">
-            <SkipBack size={20} />
+          <button 
+            onClick={prevTrack} 
+            className="text-zinc-400 hover:text-white transition cursor-pointer p-1"
+            aria-label="Pista anterior"
+          >
+            <SkipBack size={18} />
           </button>
           <button
             onClick={togglePlay}
-            className="w-9 h-9 flex items-center justify-center rounded-full bg-white text-black hover:scale-105 transition"
+            className="w-9 h-9 flex items-center justify-center rounded-full bg-white text-black hover:scale-105 active:scale-95 transition cursor-pointer shadow-md"
+            aria-label={isPlaying ? 'Pausar' : 'Reproducir'}
           >
-            {isPlaying ? <Pause size={18} fill="black" /> : <Play size={18} fill="black" className="ml-0.5" />}
+            {isPlaying ? (
+              <Pause size={17} fill="black" />
+            ) : (
+              <Play size={17} fill="black" className="ml-0.5" />
+            )}
           </button>
-          <button onClick={nextTrack} className="text-zinc-400 hover:text-white transition">
-            <SkipForward size={20} />
+          <button 
+            onClick={nextTrack} 
+            className="text-zinc-400 hover:text-white transition cursor-pointer p-1"
+            aria-label="Siguiente pista"
+          >
+            <SkipForward size={18} />
           </button>
         </div>
-        <div className="flex items-center gap-2 w-full text-xs text-zinc-400">
-          <span>{formatTime(currentTime)}</span>
-          <div className="relative w-full h-1 bg-zinc-700 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-white transition-all"
-              style={{ width: `${(currentTime / (duration || 1)) * 100}%` }}
-            />
+
+        {/* Indicador EN VIVO o Barra de Progreso */}
+        {isLiveStream ? (
+          <div className="flex items-center justify-center gap-2 text-xs text-green-400 font-semibold py-0.5">
+            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+            <span className="tracking-wider">TRANSMISIÓN EN VIVO</span>
           </div>
-          <span>{formatTime(duration)}</span>
-        </div>
+        ) : (
+          <div className="flex items-center gap-2.5 w-full text-xs text-zinc-400 font-mono">
+            <span className="w-9 text-right">{formatTime(currentTime)}</span>
+            <div className="relative w-full h-1 bg-zinc-800 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-green-500 transition-all duration-150"
+                style={{ width: `${Math.min(100, (currentTime / (duration || 1)) * 100)}%` }}
+              />
+            </div>
+            <span className="w-9">{formatTime(duration)}</span>
+          </div>
+        )}
       </div>
 
-      {/* Volumen */}
-      <div className="flex items-center gap-2 w-1/4 justify-end">
+      {/* 3. Control de Volumen */}
+      <div className="flex items-center gap-2.5 w-1/4 justify-end">
         <Volume2 size={18} className="text-zinc-400" />
         <input
           type="range"
@@ -67,7 +109,8 @@ export default function PlayerBar() {
           step="0.01"
           value={volume}
           onChange={(e) => setVolume(parseFloat(e.target.value))}
-          className="w-24 accent-white cursor-pointer"
+          className="w-24 accent-green-500 bg-zinc-700 h-1 rounded-lg cursor-pointer"
+          aria-label="Control de volumen"
         />
       </div>
     </div>

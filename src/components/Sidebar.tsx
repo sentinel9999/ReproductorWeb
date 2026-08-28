@@ -10,6 +10,7 @@ import {
   Music2, 
   Radio, 
   Flame, 
+  UploadCloud,
   Menu, 
   X,
   Search
@@ -22,6 +23,7 @@ const CATEGORIES = [
   { name: 'Álbumes', href: '/albums', icon: Music2 },
   { name: 'Radio', href: '/radio', icon: Radio },
   { name: 'Tendencias', href: '/trends', icon: Flame },
+  { name: 'Subir Música', href: '/upload', icon: UploadCloud },
 ];
 
 export default function Sidebar() {
@@ -88,7 +90,7 @@ export default function Sidebar() {
             const Icon = cat.icon;
             return (
               <Link
-                key={cat.name}
+                key={cat.href}
                 href={cat.href}
                 className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-zinc-300 hover:text-white hover:bg-zinc-900 transition font-medium"
               >

@@ -7,17 +7,24 @@ export default function AudioEngine() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const { currentTrack, isPlaying, volume, setCurrentTime, setDuration, nextTrack } = usePlayerStore();
 
-  // Controlar Play / Pause
+  // 1. Sincronizar fuente y estado de reproducción
   useEffect(() => {
-    if (!audioRef.current) return;
+    const audio = audioRef.current;
+    if (!audio || !currentTrack?.audioUrl) return;
+
     if (isPlaying) {
-      audioRef.current.play().catch(() => {});
+      const playPromise = audio.play();
+      if (playPromise !== undefined) {
+        playPromise.catch((err) => {
+          console.warn('Esperando interacción del usuario o buffer:', err);
+        });
+      }
     } else {
-      audioRef.current.pause();
+      audio.pause();
     }
   }, [isPlaying, currentTrack]);
 
-  // Controlar Volumen
+  // 2. Sincronizar volumen
   useEffect(() => {
     if (audioRef.current) {
       audioRef.current.volume = volume;
@@ -29,10 +36,20 @@ export default function AudioEngine() {
   return (
     <audio
       ref={audioRef}
+      key={currentTrack.id} // Forza la recarga limpia al cambiar de canción
       src={currentTrack.audioUrl}
+      preload="auto"
       onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime)}
       onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
       onEnded={nextTrack}
+      onError={(e) => {
+        const error = e.currentTarget.error;
+        console.error('Detalle del error de audio:', {
+          code: error?.code,
+          message: error?.message,
+          src: e.currentTarget.src,
+        });
+      }}
     />
   );
 }
