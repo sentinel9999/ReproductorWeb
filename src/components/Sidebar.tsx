@@ -21,7 +21,7 @@ const CATEGORIES = [
   { name: 'Tu Biblioteca', href: '/library', icon: Library },
   { name: 'Álbumes', href: '/albums', icon: Music2 },
   { name: 'Radio', href: '/radio', icon: Radio },
-  { name: 'Tendencias', href: '/trending', icon: Flame },
+  { name: 'Tendencias', href: '/trends', icon: Flame },
 ];
 
 export default function Sidebar() {
@@ -38,36 +38,32 @@ export default function Sidebar() {
 
   return (
     <>
-      {/* Botón flotante para abrir cuando está oculto */}
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="fixed top-4 left-4 z-40 p-2 bg-zinc-900 border border-zinc-800 rounded-lg text-zinc-300 hover:text-white"
+          className="fixed top-4 left-4 z-40 p-2 bg-zinc-900 border border-zinc-800 rounded-lg text-zinc-300 hover:text-white cursor-pointer"
           aria-label="Abrir menú"
         >
           <Menu size={20} />
         </button>
       )}
 
-      {/* Menú Lateral */}
       <aside
         className={`fixed top-0 left-0 h-[calc(100vh-5rem)] bg-zinc-950 border-r border-zinc-800 transition-all duration-300 z-30 flex flex-col ${
           isOpen ? 'w-64 translate-x-0' : '-translate-x-full w-64'
         }`}
       >
-        {/* Cabecera del menú */}
         <div className="flex items-center justify-between p-5 border-b border-zinc-900">
-          <span className="font-bold text-lg text-white tracking-wide">Rokola</span>
+          <span className="font-bold text-lg text-white tracking-wide">Rokola Web</span>
           <button
             onClick={() => setIsOpen(false)}
-            className="p-1 rounded-md text-zinc-400 hover:text-white hover:bg-zinc-800"
+            className="p-1 rounded-md text-zinc-400 hover:text-white hover:bg-zinc-800 cursor-pointer"
             aria-label="Cerrar menú"
           >
             <X size={20} />
           </button>
         </div>
 
-        {/* Sección de Búsqueda Integrada */}
         <div className="p-4 pb-2">
           <form onSubmit={handleSearch} className="relative">
             <Search 
@@ -84,7 +80,6 @@ export default function Sidebar() {
           </form>
         </div>
 
-        {/* Lista de Categorías */}
         <nav className="flex-1 p-4 pt-2 space-y-1 overflow-y-auto">
           <p className="text-xs font-semibold text-zinc-500 uppercase px-3 mb-2 tracking-wider">
             Categorías

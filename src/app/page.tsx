@@ -6,234 +6,324 @@ import {
   Play, 
   Pause, 
   Disc, 
-  Radio, 
-  Cpu, 
-  Zap, 
-  Activity, 
-  ShieldCheck, 
-  Terminal, 
-  Layers,
-  ChevronRight
+  Music, 
+  Sparkles, 
+  Mic2, 
+  Heart, 
+  ListMusic, 
+  Library, 
+  ChevronRight 
 } from 'lucide-react';
 import Link from 'next/link';
 
-const HERO_NODE: Track = {
+// 1. Canción Destacada (Hero)
+const FEATURED_TRACK: Track = {
   id: 'hero-1',
-  title: 'Cyberpulse Horizon [2099]',
-  artist: 'Kavinsky Protocol',
+  title: 'Summer Vibes Deluxe',
+  artist: 'Benjamin Tissot',
   duration: 180,
-  coverUrl: 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=800&h=400&fit=crop',
-  audioUrl: 'https://www.bensound.com/bensound-music/bensound-energy.mp3',
+  coverUrl: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=800&h=400&fit=crop',
+  audioUrl: 'https://www.bensound.com/bensound-music/bensound-sunny.mp3',
 };
 
-const LIVE_NODES: Track[] = [
+// 2. Playlists del Usuario
+const USER_PLAYLISTS = [
+  {
+    id: 'p1',
+    name: 'Favoritos de la Semana',
+    trackCount: 15,
+    coverUrl: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300&h=300&fit=crop',
+  },
+  {
+    id: 'p2',
+    name: 'Para Concentrarse',
+    trackCount: 32,
+    coverUrl: 'https://images.unsplash.com/photo-1501386761578-eac5c94b800a?w=300&h=300&fit=crop',
+  },
+  {
+    id: 'p3',
+    name: 'Entrenamiento & Gym',
+    trackCount: 24,
+    coverUrl: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=300&h=300&fit=crop',
+  },
+];
+
+// 3. Canciones Recientes
+const RECENT_TRACKS: Track[] = [
   {
     id: '1',
-    title: 'Acoustic Subroutine',
+    title: 'Acoustic Breeze',
     artist: 'Benjamin Tissot',
     duration: 100,
-    coverUrl: 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=300&h=300&fit=crop',
+    coverUrl: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300&h=300&fit=crop',
     audioUrl: 'https://www.bensound.com/bensound-music/bensound-acousticbreeze.mp3',
   },
   {
     id: '2',
-    title: 'Solar Beats Matrix',
-    artist: 'Bensound Audio Core',
+    title: 'Sunny Beats',
+    artist: 'Bensound',
     duration: 140,
-    coverUrl: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=300&h=300&fit=crop',
+    coverUrl: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=300&h=300&fit=crop',
     audioUrl: 'https://www.bensound.com/bensound-music/bensound-sunny.mp3',
   },
   {
     id: '3',
-    title: 'Voltage Surge Overdrive',
-    artist: 'Electronic Waves AI',
+    title: 'Energy Pulse',
+    artist: 'Electronic Waves',
     duration: 179,
-    coverUrl: 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=300&h=300&fit=crop',
+    coverUrl: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop',
     audioUrl: 'https://www.bensound.com/bensound-music/bensound-energy.mp3',
   },
   {
     id: '4',
-    title: 'Cryo Sleep Ambient',
-    artist: 'Chillout Lab Unit 04',
+    title: 'Slow Motion',
+    artist: 'Chillout Lab',
     duration: 205,
-    coverUrl: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=300&h=300&fit=crop',
+    coverUrl: 'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=300&h=300&fit=crop',
     audioUrl: 'https://www.bensound.com/bensound-music/bensound-acousticbreeze.mp3',
   },
 ];
 
-const ARCHIVES = [
+// 4. Artistas Populares
+const POPULAR_ARTISTS = [
   {
-    id: 'a1',
-    title: 'Neural Synthetics Vol. 1',
-    artist: 'AI Core v4.2',
-    sector: 'SEC-01',
-    coverUrl: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300&h=300&fit=crop',
+    id: 'art-1',
+    name: 'Benjamin Tissot',
+    role: 'Compositor / Acústico',
+    avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&h=300&fit=crop',
   },
   {
-    id: 'a2',
-    title: 'Deep Quantum Oscillations',
-    artist: 'Void Array',
-    sector: 'SEC-09',
-    coverUrl: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?w=300&h=300&fit=crop',
+    id: 'art-2',
+    name: 'Bensound',
+    role: 'Productor Musical',
+    avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=300&fit=crop',
   },
   {
-    id: 'a3',
-    title: 'Neon Drift Cyberpunk',
-    artist: 'Synth Grid 2088',
-    sector: 'SEC-14',
-    coverUrl: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=300&h=300&fit=crop',
+    id: 'art-3',
+    name: 'Electronic Waves',
+    role: 'Dúo Synthwave',
+    avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=300&h=300&fit=crop',
+  },
+  {
+    id: 'art-4',
+    name: 'Chillout Lab',
+    role: 'Banda Lo-Fi / Ambient',
+    avatarUrl: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=300&h=300&fit=crop',
   },
 ];
 
-export default function TechHome() {
+// 5. Álbumes
+const RECENT_ALBUMS = [
+  {
+    id: 'a1',
+    title: 'Acoustic Memories',
+    artist: 'Benjamin Tissot',
+    year: '2024',
+    coverUrl: 'https://images.unsplash.com/photo-1465847899084-d164df4dedc6?w=300&h=300&fit=crop',
+  },
+  {
+    id: 'a2',
+    title: 'Summer Nights',
+    artist: 'Various Artists',
+    year: '2023',
+    coverUrl: 'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=300&h=300&fit=crop',
+  },
+  {
+    id: 'a3',
+    title: 'Neon Nights',
+    artist: 'Electronic Waves',
+    year: '2024',
+    coverUrl: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300&h=300&fit=crop',
+  },
+  {
+    id: 'a4',
+    title: 'Midnight Jazz',
+    artist: 'The Quartet Club',
+    year: '2023',
+    coverUrl: 'https://images.unsplash.com/photo-1511192336575-5a79af67a629?w=300&h=300&fit=crop',
+  },
+];
+
+export default function Home() {
   const { currentTrack, isPlaying, setTrack, setQueue, togglePlay } = usePlayerStore();
 
-  const handleHeroPlay = () => {
-    if (currentTrack?.id === HERO_NODE.id) {
+  const handlePlayFeatured = () => {
+    if (currentTrack?.id === FEATURED_TRACK.id) {
       togglePlay();
     } else {
-      setTrack(HERO_NODE);
+      setTrack(FEATURED_TRACK);
     }
   };
 
   return (
-    <div className="p-6 md:p-10 max-w-7xl mx-auto space-y-12 pb-28 font-sans">
-      
-      {/* 1. HUD Telemetry Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-4 py-2.5 px-4 bg-cyan-950/20 border border-cyan-500/20 rounded-lg backdrop-blur-sm">
-        <div className="flex items-center gap-3">
-          <span className="flex h-2.5 w-2.5 relative">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-cyan-500"></span>
-          </span>
-          <span className="text-xs font-mono tracking-widest text-cyan-400 uppercase">
-            ROKOLA_CORE // ESTADO: EN LÍNEA
-          </span>
+    <div className="p-6 md:p-10 max-w-7xl mx-auto space-y-12 pb-24">
+      {/* 1. Saludo */}
+      <header className="flex flex-col gap-1">
+        <div className="flex items-center gap-2 text-green-400 text-sm font-semibold tracking-wide uppercase">
+          <Sparkles size={16} />
+          <span>¡Qué bueno verte de vuelta!</span>
         </div>
-        <div className="flex items-center gap-6 text-xs font-mono text-zinc-400">
-          <span className="hidden sm:flex items-center gap-1.5">
-            <Cpu size={14} className="text-cyan-400" /> DSP 96kHz / 24-bit
-          </span>
-          <span className="flex items-center gap-1.5">
-            <ShieldCheck size={14} className="text-emerald-400" /> FLAC_LOSSLESS
-          </span>
-        </div>
-      </div>
+        <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-white">
+          Inicio
+        </h1>
+      </header>
 
-      {/* 2. Hero Console Card */}
-      <section className="relative overflow-hidden rounded-xl bg-gradient-to-r from-zinc-950 via-slate-900 to-cyan-950 border-2 border-cyan-500/30 p-6 md:p-8 shadow-[0_0_40px_rgba(6,182,212,0.15)] flex flex-col md:flex-row items-center justify-between gap-8 group">
-        
-        {/* Línea de acento neón lateral */}
-        <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-gradient-to-b from-cyan-400 via-purple-500 to-pink-500"></div>
-
+      {/* 2. Banner Destacado / Hero */}
+      <section className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-900/60 via-zinc-900 to-zinc-950 border border-emerald-500/20 p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-2xl">
         <div className="space-y-4 z-10 max-w-xl">
-          <div className="flex items-center gap-2">
-            <span className="px-2.5 py-0.5 bg-cyan-500/10 border border-cyan-500/40 text-cyan-300 font-mono text-xs tracking-wider rounded uppercase">
-              SEÑAL PRIMARIA
-            </span>
-            <span className="text-xs font-mono text-zinc-400">// BUFFER_READY</span>
-          </div>
-
-          <h2 className="text-3xl md:text-5xl font-black tracking-tight text-white uppercase italic">
-            {HERO_NODE.title}
+          <span className="inline-block px-3 py-1 bg-green-500/20 border border-green-500/40 text-green-400 text-xs font-semibold rounded-full uppercase tracking-wider">
+            Recomendado para ti
+          </span>
+          <h2 className="text-2xl md:text-4xl font-bold text-white leading-tight">
+            {FEATURED_TRACK.title}
           </h2>
-
-          <p className="text-zinc-300 text-sm font-mono leading-relaxed">
-            Transmisión de espectro dinámico. Transductor sintonizado por {HERO_NODE.artist}.
+          <p className="text-zinc-300 text-sm md:text-base">
+            Descubre las mejores composiciones y ritmos seleccionados para hoy por {FEATURED_TRACK.artist}.
           </p>
-
-          {/* Botón de reproducción High-Tech */}
-          <div className="pt-2 flex items-center gap-4">
+          <div className="pt-2">
             <button
-              onClick={handleHeroPlay}
-              className="flex items-center gap-3 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-black font-black font-mono text-sm px-7 py-3.5 rounded-lg transition transform active:scale-95 shadow-[0_0_20px_rgba(6,182,212,0.4)] cursor-pointer"
+              onClick={handlePlayFeatured}
+              className="flex items-center gap-2 bg-green-500 hover:bg-green-400 text-black font-semibold px-6 py-3 rounded-full transition transform hover:scale-105 active:scale-95 shadow-lg cursor-pointer"
             >
-              {currentTrack?.id === HERO_NODE.id && isPlaying ? (
+              {currentTrack?.id === FEATURED_TRACK.id && isPlaying ? (
                 <>
                   <Pause size={18} fill="black" />
-                  <span>SUSPENDER_TRANSMISIÓN</span>
+                  <span>Pausar</span>
                 </>
               ) : (
                 <>
                   <Play size={18} fill="black" className="ml-0.5" />
-                  <span>INICIAR_TRANSMISIÓN</span>
+                  <span>Reproducir ahora</span>
                 </>
               )}
             </button>
           </div>
         </div>
 
-        {/* Visualizador de Carátula con Efecto Scanner */}
-        <div className="relative w-full md:w-80 h-52 rounded-lg overflow-hidden border border-cyan-500/40 flex-shrink-0 shadow-2xl">
+        <div className="w-full md:w-64 h-48 rounded-xl overflow-hidden shadow-lg border border-zinc-800 flex-shrink-0">
           <img
-            src={HERO_NODE.coverUrl}
-            alt={HERO_NODE.title}
-            className="w-full h-full object-cover group-hover:scale-105 transition duration-700 brightness-90 contrast-125"
+            src={FEATURED_TRACK.coverUrl}
+            alt={FEATURED_TRACK.title}
+            className="w-full h-full object-cover"
           />
-          {/* Overlay de gradiente */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-cyan-500/10 pointer-events-none"></div>
-          
-          {/* Espectrómetro decorativo abajo a la derecha */}
-          <div className="absolute bottom-3 right-3 flex items-end gap-1 bg-black/60 backdrop-blur-md px-2.5 py-1.5 rounded border border-cyan-500/30">
-            <div className="w-1 bg-cyan-400 rounded-sm animate-spectrum-1"></div>
-            <div className="w-1 bg-cyan-400 rounded-sm animate-spectrum-2"></div>
-            <div className="w-1 bg-purple-400 rounded-sm animate-spectrum-3"></div>
-            <div className="w-1 bg-pink-400 rounded-sm animate-spectrum-4"></div>
+        </div>
+      </section>
+
+      {/* 3. Tu Biblioteca y Colecciones */}
+      <section className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Library className="text-green-400" size={20} />
+            <h2 className="text-xl font-bold text-white">Tu Biblioteca y Colecciones</h2>
+          </div>
+          <Link
+            href="/library"
+            className="flex items-center gap-1 text-xs font-semibold text-zinc-400 hover:text-green-400 transition"
+          >
+            <span>Ver todo</span>
+            <ChevronRight size={16} />
+          </Link>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          {/* Favoritos */}
+          <Link
+            href="/playlist/p1"
+            className="bg-gradient-to-br from-indigo-900/40 to-zinc-900/80 hover:from-indigo-900/60 hover:to-zinc-900 p-5 rounded-2xl border border-indigo-500/20 hover:border-indigo-500/40 transition flex items-center justify-between group shadow-lg"
+          >
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 rounded-xl bg-gradient-to-tr from-indigo-600 to-purple-500 flex items-center justify-center text-white shadow-md">
+                <Heart size={24} fill="currentColor" />
+              </div>
+              <div>
+                <h3 className="font-bold text-base text-white group-hover:text-indigo-300 transition">
+                  Tus Me Gusta
+                </h3>
+                <p className="text-xs text-zinc-400">48 canciones guardadas</p>
+              </div>
+            </div>
+            <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center text-black shadow-md opacity-0 group-hover:opacity-100 transition transform scale-90 group-hover:scale-100">
+              <Play size={16} fill="black" className="ml-0.5" />
+            </div>
+          </Link>
+
+          {/* Playlists */}
+          <Link
+            href="/library"
+            className="bg-zinc-900/40 hover:bg-zinc-900/80 p-5 rounded-2xl border border-zinc-800/60 hover:border-zinc-700 transition flex items-center justify-between group shadow-sm"
+          >
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-green-400 shadow-md">
+                <ListMusic size={24} />
+              </div>
+              <div>
+                <h3 className="font-bold text-base text-white group-hover:text-green-400 transition">
+                  Tus Playlists
+                </h3>
+                <p className="text-xs text-zinc-400">{USER_PLAYLISTS.length} listas personalizadas</p>
+              </div>
+            </div>
+            <ChevronRight className="text-zinc-500 group-hover:text-white transition" size={20} />
+          </Link>
+
+          {/* Artistas en biblioteca */}
+          <div className="bg-zinc-900/40 hover:bg-zinc-900/80 p-5 rounded-2xl border border-zinc-800/60 hover:border-zinc-700 transition flex items-center justify-between group shadow-sm">
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 rounded-xl bg-purple-500/20 border border-purple-500/30 flex items-center justify-center text-purple-400 shadow-md">
+                <Library size={24} />
+              </div>
+              <div>
+                <h3 className="font-bold text-base text-white">Artistas y Álbumes</h3>
+                <p className="text-xs text-zinc-400">12 seguidos en biblioteca</p>
+              </div>
+            </div>
+            <ChevronRight className="text-zinc-500 group-hover:text-white transition" size={20} />
           </div>
         </div>
       </section>
 
-      {/* 3. Módulos de Pistas Activas (Grid Futurista) */}
+      {/* 4. Escuchado Recientemente */}
       <section className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Zap className="text-cyan-400" size={18} />
-            <h3 className="text-base font-mono uppercase tracking-widest text-white font-bold">
-              FRECUENCIAS_EN_MEMORIA
-            </h3>
-          </div>
-          <span className="text-xs font-mono text-zinc-500">4_NODOS_CARGADOS</span>
+        <div className="flex items-center gap-2">
+          <Music className="text-green-400" size={20} />
+          <h2 className="text-xl font-bold text-white">Escuchado Recientemente</h2>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {LIVE_NODES.map((track, index) => {
-            const isThisPlaying = currentTrack?.id === track.id && isPlaying;
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {RECENT_TRACKS.map((track, index) => {
+            const isThisTrackPlaying = currentTrack?.id === track.id && isPlaying;
 
             return (
               <div
                 key={track.id}
-                className={`relative p-4 rounded-lg bg-zinc-950/70 border transition-all duration-200 flex items-center justify-between group overflow-hidden ${
-                  isThisPlaying 
-                    ? 'border-cyan-500 shadow-[0_0_20px_rgba(6,182,212,0.2)] bg-cyan-950/20' 
-                    : 'border-zinc-800/80 hover:border-zinc-700'
-                }`}
+                className="bg-zinc-900/50 hover:bg-zinc-800/80 p-3 rounded-xl border border-zinc-800/80 hover:border-zinc-700 transition flex items-center justify-between group shadow-sm"
               >
-                <div className="flex items-center gap-4 min-w-0">
-                  <div className="relative w-14 h-14 rounded overflow-hidden flex-shrink-0 border border-zinc-800">
-                    <img src={track.coverUrl} alt={track.title} className="w-full h-full object-cover" />
-                    {isThisPlaying && (
-                      <div className="absolute inset-0 bg-cyan-950/60 flex items-center justify-center">
-                        <Activity size={18} className="text-cyan-300 animate-pulse" />
-                      </div>
-                    )}
-                  </div>
+                <div className="flex items-center gap-3 min-w-0">
+                  <img
+                    src={track.coverUrl}
+                    alt={track.title}
+                    className="w-12 h-12 rounded-lg object-cover flex-shrink-0"
+                  />
                   <div className="truncate">
-                    <p className={`font-mono text-xs tracking-wider uppercase truncate ${isThisPlaying ? 'text-cyan-400 font-bold' : 'text-white'}`}>
+                    <h3 className={`font-semibold text-sm truncate ${isThisTrackPlaying ? 'text-green-400' : 'text-white'}`}>
                       {track.title}
-                    </p>
-                    <p className="text-xs font-mono text-zinc-400 truncate mt-0.5">{track.artist}</p>
+                    </h3>
+                    <p className="text-xs text-zinc-400 truncate">{track.artist}</p>
                   </div>
                 </div>
 
                 <button
-                  onClick={() => setQueue(LIVE_NODES, index)}
-                  className={`w-10 h-10 rounded flex items-center justify-center border transition transform cursor-pointer ${
-                    isThisPlaying 
-                      ? 'bg-cyan-500 text-black border-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.5)]' 
-                      : 'bg-zinc-900 text-zinc-300 border-zinc-700 hover:border-cyan-400 hover:text-cyan-400'
+                  onClick={() => setQueue(RECENT_TRACKS, index)}
+                  className={`w-9 h-9 bg-green-500 rounded-full flex items-center justify-center text-black shadow-md transition transform group-hover:scale-100 flex-shrink-0 cursor-pointer ${
+                    isThisTrackPlaying ? 'opacity-100 scale-100' : 'opacity-0 group-hover:opacity-100 scale-90'
                   }`}
+                  aria-label="Reproducir"
                 >
-                  {isThisPlaying ? <Pause size={16} /> : <Play size={16} className="ml-0.5" />}
+                  {isThisTrackPlaying ? (
+                    <Pause size={15} fill="black" />
+                  ) : (
+                    <Play size={15} fill="black" className="ml-0.5" />
+                  )}
                 </button>
               </div>
             );
@@ -241,33 +331,59 @@ export default function TechHome() {
         </div>
       </section>
 
-      {/* 4. Archivos de Audio / Bloques de Datos */}
+      {/* 5. Artistas Populares */}
       <section className="space-y-4">
         <div className="flex items-center gap-2">
-          <Layers className="text-purple-400" size={18} />
-          <h3 className="text-base font-mono uppercase tracking-widest text-white font-bold">
-            BANCOS_DE_MEMORIA_ÁLBUMES
-          </h3>
+          <Mic2 className="text-green-400" size={20} />
+          <h2 className="text-xl font-bold text-white">Artistas Populares</h2>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-          {ARCHIVES.map((arch) => (
-            <Link
-              key={arch.id}
-              href={`/album/${arch.id}`}
-              className="bg-zinc-950/60 hover:bg-zinc-900 border border-zinc-800/80 hover:border-purple-500/50 rounded-lg p-4 transition duration-300 group flex flex-col justify-between"
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-5">
+          {POPULAR_ARTISTS.map((artist) => (
+            <div
+              key={artist.id}
+              className="bg-zinc-900/40 hover:bg-zinc-900/80 p-4 rounded-xl border border-zinc-800/60 hover:border-zinc-700 transition cursor-pointer group flex flex-col items-center text-center shadow-sm"
             >
-              <div className="relative aspect-video mb-3 rounded overflow-hidden border border-zinc-800">
-                <img src={arch.coverUrl} alt={arch.title} className="w-full h-full object-cover group-hover:scale-105 transition duration-500" />
-                <span className="absolute top-2 left-2 bg-black/70 backdrop-blur-sm border border-purple-500/30 text-purple-300 font-mono text-[10px] px-2 py-0.5 rounded">
-                  {arch.sector}
-                </span>
+              <div className="w-28 h-28 md:w-36 md:h-36 mb-4 overflow-hidden rounded-full relative shadow-md">
+                <img
+                  src={artist.avatarUrl}
+                  alt={artist.name}
+                  className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                />
+              </div>
+              <h3 className="font-semibold text-sm text-white truncate w-full">{artist.name}</h3>
+              <p className="text-xs text-zinc-400 truncate w-full mt-1">{artist.role}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* 6. Álbumes y Compilaciones */}
+      <section className="space-y-4">
+        <div className="flex items-center gap-2">
+          <Disc className="text-green-400" size={20} />
+          <h2 className="text-xl font-bold text-white">Álbumes y Compilaciones</h2>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-5">
+          {RECENT_ALBUMS.map((album) => (
+            <Link
+              key={album.id}
+              href={`/album/${album.id}`}
+              className="bg-zinc-900/40 hover:bg-zinc-900/80 p-4 rounded-xl border border-zinc-800/60 hover:border-zinc-700 transition cursor-pointer group flex flex-col justify-between shadow-sm"
+            >
+              <div className="aspect-square mb-3 overflow-hidden rounded-lg relative">
+                <img
+                  src={album.coverUrl}
+                  alt={album.title}
+                  className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                />
               </div>
               <div>
-                <h4 className="font-mono text-sm text-white font-bold truncate group-hover:text-purple-300 transition">
-                  {arch.title}
-                </h4>
-                <p className="text-xs font-mono text-zinc-400 mt-1">{arch.artist}</p>
+                <h3 className="font-semibold text-sm text-white truncate">{album.title}</h3>
+                <p className="text-xs text-zinc-400 truncate mt-0.5">
+                  {album.artist} • <span className="text-zinc-500">{album.year}</span>
+                </p>
               </div>
             </Link>
           ))}
