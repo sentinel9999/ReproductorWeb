@@ -18,40 +18,88 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 
+// Artistas y álbumes estáticos de respaldo visual
+const POPULAR_ARTISTS: Artist[] = [
+  {
+    id: 'art-1',
+    name: 'Benjamin Tissot',
+    role: 'Compositor / Acústico',
+    avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=300&h=300&fit=crop',
+  },
+  {
+    id: 'art-2',
+    name: 'Bensound',
+    role: 'Productor Musical',
+    avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=300&fit=crop',
+  },
+  {
+    id: 'art-3',
+    name: 'Electronic Waves',
+    role: 'Dúo Synthwave',
+    avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=300&h=300&fit=crop',
+  },
+  {
+    id: 'art-4',
+    name: 'Chillout Lab',
+    role: 'Banda Lo-Fi / Ambient',
+    avatarUrl: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=300&h=300&fit=crop',
+  },
+];
+
+const RECENT_ALBUMS = [
+  {
+    id: 'a1',
+    title: 'Acoustic Memories',
+    artist: 'Benjamin Tissot',
+    year: '2024',
+    coverUrl: 'https://images.unsplash.com/photo-1465847899084-d164df4dedc6?w=300&h=300&fit=crop',
+  },
+  {
+    id: 'a2',
+    title: 'Summer Nights',
+    artist: 'Various Artists',
+    year: '2023',
+    coverUrl: 'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=300&h=300&fit=crop',
+  },
+  {
+    id: 'a3',
+    title: 'Neon Nights',
+    artist: 'Electronic Waves',
+    year: '2024',
+    coverUrl: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300&h=300&fit=crop',
+  },
+  {
+    id: 'a4',
+    title: 'Midnight Jazz',
+    artist: 'The Quartet Club',
+    year: '2023',
+    coverUrl: 'https://images.unsplash.com/photo-1511192336575-5a79af67a629?w=300&h=300&fit=crop',
+  },
+];
+
 export default function Home() {
   const [tracks, setTracks] = useState<Track[]>([]);
-  const [artists, setArtists] = useState<Artist[]>([]);
-  const [albums, setAlbums] = useState<Partial<Album>[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Usando el store con tu nombre de archivo personalizado (usePlaystore)
   const { currentTrack, isPlaying, setTrack, setQueue, togglePlay } = usePlayerStore();
 
   useEffect(() => {
-    async function loadHomeData() {
+    async function loadTracks() {
       try {
-        const [tracksRes, artistsRes, albumsRes] = await Promise.all([
-          fetch('/api/tracks'),
-          fetch('/api/artists'),
-          fetch('/api/albums'),
-        ]);
-
-        const [tracksData, artistsData, albumsData] = await Promise.all([
-          tracksRes.json(),
-          artistsRes.json(),
-          albumsRes.json(),
-        ]);
-
-        setTracks(tracksData);
-        setArtists(artistsData);
-        setAlbums(albumsData);
+        const res = await fetch('/api/tracks');
+        if (res.ok) {
+          const data = await res.json();
+          setTracks(data);
+        }
       } catch (error) {
-        console.error('Error cargando los datos del inicio:', error);
+        console.error('Error cargando canciones:', error);
       } finally {
         setIsLoading(false);
       }
     }
 
-    loadHomeData();
+    loadTracks();
   }, []);
 
   const featuredTrack = tracks[0];
@@ -70,14 +118,14 @@ export default function Home() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3 text-zinc-400">
         <Loader2 className="animate-spin text-green-500" size={32} />
-        <p className="text-sm">Cargando biblioteca y canciones...</p>
+        <p className="text-sm">Cargando inicio...</p>
       </div>
     );
   }
 
   return (
     <div className="p-6 md:p-10 max-w-7xl mx-auto space-y-12 pb-24">
-      {/* 1. Header / Saludo */}
+      {/* 1. Saludo */}
       <header className="flex flex-col gap-1">
         <div className="flex items-center gap-2 text-green-400 text-sm font-semibold tracking-wide uppercase">
           <Sparkles size={16} />
@@ -88,7 +136,7 @@ export default function Home() {
         </h1>
       </header>
 
-      {/* 2. Banner Destacado / Hero (Canción cargada desde API) */}
+      {/* 2. Banner Destacado / Hero */}
       {featuredTrack && (
         <section className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-900/60 via-zinc-900 to-zinc-950 border border-emerald-500/20 p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-2xl">
           <div className="space-y-4 z-10 max-w-xl">
@@ -99,7 +147,7 @@ export default function Home() {
               {featuredTrack.title}
             </h2>
             <p className="text-zinc-300 text-sm md:text-base">
-              Descubre las mejores composiciones y ritmos seleccionados para hoy por {featuredTrack.artist}.
+              Disfruta de este gran tema compuesto por {featuredTrack.artist}.
             </p>
             <div className="pt-2">
               <button
@@ -131,7 +179,7 @@ export default function Home() {
         </section>
       )}
 
-      {/* 3. Accesos Rápidos */}
+      {/* 3. Tu Biblioteca y Colecciones */}
       <section className="space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -183,25 +231,21 @@ export default function Home() {
             <ChevronRight className="text-zinc-500 group-hover:text-white transition" size={20} />
           </Link>
 
-          <Link
-            href="/albums"
-            className="bg-zinc-900/40 hover:bg-zinc-900/80 p-5 rounded-2xl border border-zinc-800/60 hover:border-zinc-700 transition flex items-center justify-between group shadow-sm"
-          >
+          <div className="bg-zinc-900/40 hover:bg-zinc-900/80 p-5 rounded-2xl border border-zinc-800/60 hover:border-zinc-700 transition flex items-center justify-between group shadow-sm">
             <div className="flex items-center gap-4">
               <div className="w-14 h-14 rounded-xl bg-purple-500/20 border border-purple-500/30 flex items-center justify-center text-purple-400 shadow-md">
                 <Library size={24} />
               </div>
               <div>
-                <h3 className="font-bold text-base text-white">Álbumes y Catálogo</h3>
-                <p className="text-xs text-zinc-400">{albums.length} disponibles</p>
+                <h3 className="font-bold text-base text-white">Artistas y Álbumes</h3>
+                <p className="text-xs text-zinc-400">Biblioteca activa</p>
               </div>
             </div>
-            <ChevronRight className="text-zinc-500 group-hover:text-white transition" size={20} />
-          </Link>
+          </div>
         </div>
       </section>
 
-      {/* 4. Escuchado Recientemente (Cargado desde API) */}
+      {/* 4. Escuchado Recientemente */}
       <section className="space-y-4">
         <div className="flex items-center gap-2">
           <Music className="text-green-400" size={20} />
@@ -250,7 +294,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* 5. Artistas Populares (Cargados desde API) */}
+      {/* 5. Artistas Populares */}
       <section className="space-y-4">
         <div className="flex items-center gap-2">
           <Mic2 className="text-green-400" size={20} />
@@ -258,7 +302,7 @@ export default function Home() {
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-5">
-          {artists.map((artist) => (
+          {POPULAR_ARTISTS.map((artist) => (
             <div
               key={artist.id}
               className="bg-zinc-900/40 hover:bg-zinc-900/80 p-4 rounded-xl border border-zinc-800/60 hover:border-zinc-700 transition cursor-pointer group flex flex-col items-center text-center shadow-sm"
@@ -277,7 +321,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* 6. Álbumes y Compilaciones (Cargados desde API) */}
+      {/* 6. Álbumes y Compilaciones */}
       <section className="space-y-4">
         <div className="flex items-center gap-2">
           <Disc className="text-green-400" size={20} />
@@ -285,7 +329,7 @@ export default function Home() {
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-5">
-          {albums.map((album) => (
+          {RECENT_ALBUMS.map((album) => (
             <Link
               key={album.id}
               href={`/album/${album.id}`}
