@@ -8,7 +8,7 @@ export async function GET(
 ) {
   try {
     const params = await context.params;
-    // Decodifica los espacios, asteriscos y caracteres especiales de la URL
+    // Decodifica los espacios, asteriscos y símbolos especiales del archivo
     const filename = decodeURIComponent(params.filename);
 
     const filePath = path.join(process.cwd(), 'media', 'audio', filename);
@@ -72,7 +72,7 @@ export async function GET(
       },
     });
   } catch (error) {
-    console.error('Error en streaming:', error);
+    console.error('Error en streaming local:', error);
     return new NextResponse('Error interno del servidor', { status: 500 });
   }
 }
