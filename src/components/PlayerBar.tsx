@@ -1,7 +1,8 @@
 'use client';
 
+import { useRef } from 'react';
 import { usePlayerStore } from '@/store/usePlaystore';
-import { Play, Pause, SkipBack, SkipForward, Volume2 } from 'lucide-react';
+import { Play, Pause, SkipBack, SkipForward, Volume2, RotateCcw, RotateCw } from 'lucide-react';
 
 export default function PlayerBar() {
   const { 
@@ -13,8 +14,12 @@ export default function PlayerBar() {
     currentTime, 
     duration, 
     volume, 
-    setVolume 
+    setVolume,
+    seek,
+    skipTime
   } = usePlayerStore();
+
+  const progressBarRef = useRef<HTMLDivElement>(null);
 
   if (!currentTrack) return null;
 
@@ -26,6 +31,17 @@ export default function PlayerBar() {
   };
 
   const isLiveStream = !currentTrack.duration || currentTrack.duration === 0;
+
+  // Manejar clic en la barra de progreso para cambiar la posición
+  const handleProgressBarClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!progressBarRef.current || isLiveStream || !duration) return;
+    
+    const rect = progressBarRef.current.getBoundingClientRect();
+    const clickPosition = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    const newTime = clickPosition * duration;
+    
+    seek(newTime);
+  };
 
   return (
     <div className="fixed bottom-0 left-0 right-0 h-20 bg-zinc-950/95 backdrop-blur-md border-t border-zinc-800/80 px-6 flex items-center justify-between z-50 text-white shadow-2xl">
@@ -40,7 +56,7 @@ export default function PlayerBar() {
           }}
         />
         <div className="truncate">
-          <p className="text-sm font-semibold truncate text-white hover:underline cursor-pointer">
+          <p className="text-sm font-semibold truncate text-white">
             {currentTrack.title}
           </p>
           <p className="text-xs text-zinc-400 truncate mt-0.5">
@@ -49,16 +65,26 @@ export default function PlayerBar() {
         </div>
       </div>
 
-      {/* 2. Controles y Barra de Tiempo / Radio en Vivo */}
+      {/* 2. Controles, Botones -10s/+10s y Barra de Progreso */}
       <div className="flex flex-col items-center gap-1.5 w-2/4 max-w-xl">
         <div className="flex items-center gap-4">
           <button 
             onClick={prevTrack} 
             className="text-zinc-400 hover:text-white transition cursor-pointer p-1"
-            aria-label="Pista anterior"
+            title="Pista anterior"
           >
             <SkipBack size={18} />
           </button>
+
+          {/* Botón retroceder 10 segundos */}
+          <button 
+            onClick={() => skipTime(-10)} 
+            className="text-zinc-400 hover:text-white transition cursor-pointer p-1"
+            title="Retroceder 10 segundos"
+          >
+            <RotateCcw size={16} />
+          </button>
+
           <button
             onClick={togglePlay}
             className="w-9 h-9 flex items-center justify-center rounded-full bg-white text-black hover:scale-105 active:scale-95 transition cursor-pointer shadow-md"
@@ -70,16 +96,26 @@ export default function PlayerBar() {
               <Play size={17} fill="black" className="ml-0.5" />
             )}
           </button>
+
+          {/* Botón adelantar 10 segundos */}
+          <button 
+            onClick={() => skipTime(10)} 
+            className="text-zinc-400 hover:text-white transition cursor-pointer p-1"
+            title="Adelantar 10 segundos"
+          >
+            <RotateCw size={16} />
+          </button>
+
           <button 
             onClick={nextTrack} 
             className="text-zinc-400 hover:text-white transition cursor-pointer p-1"
-            aria-label="Siguiente pista"
+            title="Siguiente pista"
           >
             <SkipForward size={18} />
           </button>
         </div>
 
-        {/* Indicador EN VIVO o Barra de Progreso */}
+        {/* Indicador EN VIVO o Barra de Progreso Interactiva */}
         {isLiveStream ? (
           <div className="flex items-center justify-center gap-2 text-xs text-green-400 font-semibold py-0.5">
             <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
@@ -88,12 +124,23 @@ export default function PlayerBar() {
         ) : (
           <div className="flex items-center gap-2.5 w-full text-xs text-zinc-400 font-mono">
             <span className="w-9 text-right">{formatTime(currentTime)}</span>
-            <div className="relative w-full h-1 bg-zinc-800 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-green-500 transition-all duration-150"
-                style={{ width: `${Math.min(100, (currentTime / (duration || 1)) * 100)}%` }}
-              />
+            
+            {/* Barra de progreso clickeable */}
+            <div 
+              ref={progressBarRef}
+              onClick={handleProgressBarClick}
+              className="relative w-full h-2 bg-zinc-800 rounded-full overflow-hidden cursor-pointer group py-1"
+            >
+              <div className="absolute inset-y-0 left-0 w-full bg-transparent flex items-center">
+                <div className="w-full h-1 bg-zinc-800 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-green-500 group-hover:bg-green-400 transition-all duration-75"
+                    style={{ width: `${Math.min(100, (currentTime / (duration || 1)) * 100)}%` }}
+                  />
+                </div>
+              </div>
             </div>
+
             <span className="w-9">{formatTime(duration)}</span>
           </div>
         )}
