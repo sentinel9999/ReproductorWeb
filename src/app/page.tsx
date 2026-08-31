@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { usePlayerStore } from '@/store/usePlaystore';
-import { Track, Album, Artist } from '@/types/rokola';
+import { useAuthStore } from '@/store/useAuthStore';
+import { Track, Artist } from '@/types/rokola';
 import { 
   Play, 
   Pause, 
@@ -81,8 +82,9 @@ export default function Home() {
   const [tracks, setTracks] = useState<Track[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Usando el store con tu nombre de archivo personalizado (usePlaystore)
+  // Estados globales de reproductor y autenticación
   const { currentTrack, isPlaying, setTrack, setQueue, togglePlay } = usePlayerStore();
+  const user = useAuthStore((state) => state.user);
 
   useEffect(() => {
     async function loadTracks() {
@@ -118,18 +120,20 @@ export default function Home() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3 text-zinc-400">
         <Loader2 className="animate-spin text-green-500" size={32} />
-        <p className="text-sm">Cargando inicio...</p>
+        <p className="text-sm">Cargando catálogo musical...</p>
       </div>
     );
   }
 
   return (
     <div className="p-6 md:p-10 max-w-7xl mx-auto space-y-12 pb-24">
-      {/* 1. Saludo */}
+      {/* 1. Saludo personalizado */}
       <header className="flex flex-col gap-1">
         <div className="flex items-center gap-2 text-green-400 text-sm font-semibold tracking-wide uppercase">
           <Sparkles size={16} />
-          <span>¡Qué bueno verte de vuelta!</span>
+          <span>
+            {user ? `¡Qué bueno verte de vuelta, ${user.name}!` : '¡Bienvenido a Rokola!'}
+          </span>
         </div>
         <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-white">
           Inicio
@@ -197,7 +201,7 @@ export default function Home() {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
           <Link
-            href="/playlist/p1"
+            href="/library"
             className="bg-gradient-to-br from-indigo-900/40 to-zinc-900/80 hover:from-indigo-900/60 hover:to-zinc-900 p-5 rounded-2xl border border-indigo-500/20 hover:border-indigo-500/40 transition flex items-center justify-between group shadow-lg"
           >
             <div className="flex items-center gap-4">
@@ -208,9 +212,12 @@ export default function Home() {
                 <h3 className="font-bold text-base text-white group-hover:text-indigo-300 transition">
                   Tus Me Gusta
                 </h3>
-                <p className="text-xs text-zinc-400">Canciones favoritas</p>
+                <p className="text-xs text-zinc-400">
+                  {user ? `${user.likedSongIds.length} canciones guardadas` : 'Colección de favoritos'}
+                </p>
               </div>
             </div>
+            <ChevronRight className="text-zinc-500 group-hover:text-white transition" size={20} />
           </Link>
 
           <Link
@@ -246,53 +253,55 @@ export default function Home() {
       </section>
 
       {/* 4. Escuchado Recientemente */}
-      <section className="space-y-4">
-        <div className="flex items-center gap-2">
-          <Music className="text-green-400" size={20} />
-          <h2 className="text-xl font-bold text-white">Escuchado Recientemente</h2>
-        </div>
+      {recentTracks.length > 0 && (
+        <section className="space-y-4">
+          <div className="flex items-center gap-2">
+            <Music className="text-green-400" size={20} />
+            <h2 className="text-xl font-bold text-white">Escuchado Recientemente</h2>
+          </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {recentTracks.map((track, index) => {
-            const isThisTrackPlaying = currentTrack?.id === track.id && isPlaying;
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {recentTracks.map((track, index) => {
+              const isThisTrackPlaying = currentTrack?.id === track.id && isPlaying;
 
-            return (
-              <div
-                key={track.id}
-                className="bg-zinc-900/50 hover:bg-zinc-800/80 p-3 rounded-xl border border-zinc-800/80 hover:border-zinc-700 transition flex items-center justify-between group shadow-sm"
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <img
-                    src={track.coverUrl}
-                    alt={track.title}
-                    className="w-12 h-12 rounded-lg object-cover flex-shrink-0"
-                  />
-                  <div className="truncate">
-                    <h3 className={`font-semibold text-sm truncate ${isThisTrackPlaying ? 'text-green-400' : 'text-white'}`}>
-                      {track.title}
-                    </h3>
-                    <p className="text-xs text-zinc-400 truncate">{track.artist}</p>
-                  </div>
-                </div>
-
-                <button
-                  onClick={() => setQueue(recentTracks, index)}
-                  className={`w-9 h-9 bg-green-500 rounded-full flex items-center justify-center text-black shadow-md transition transform group-hover:scale-100 flex-shrink-0 cursor-pointer ${
-                    isThisTrackPlaying ? 'opacity-100 scale-100' : 'opacity-0 group-hover:opacity-100 scale-90'
-                  }`}
-                  aria-label="Reproducir"
+              return (
+                <div
+                  key={track.id}
+                  className="bg-zinc-900/50 hover:bg-zinc-800/80 p-3 rounded-xl border border-zinc-800/80 hover:border-zinc-700 transition flex items-center justify-between group shadow-sm"
                 >
-                  {isThisTrackPlaying ? (
-                    <Pause size={15} fill="black" />
-                  ) : (
-                    <Play size={15} fill="black" className="ml-0.5" />
-                  )}
-                </button>
-              </div>
-            );
-          })}
-        </div>
-      </section>
+                  <div className="flex items-center gap-3 min-w-0">
+                    <img
+                      src={track.coverUrl}
+                      alt={track.title}
+                      className="w-12 h-12 rounded-lg object-cover flex-shrink-0"
+                    />
+                    <div className="truncate">
+                      <h3 className={`font-semibold text-sm truncate ${isThisTrackPlaying ? 'text-green-400' : 'text-white'}`}>
+                        {track.title}
+                      </h3>
+                      <p className="text-xs text-zinc-400 truncate">{track.artist}</p>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => setQueue(recentTracks, index)}
+                    className={`w-9 h-9 bg-green-500 rounded-full flex items-center justify-center text-black shadow-md transition transform group-hover:scale-100 flex-shrink-0 cursor-pointer ${
+                      isThisTrackPlaying ? 'opacity-100 scale-100' : 'opacity-0 group-hover:opacity-100 scale-90'
+                    }`}
+                    aria-label="Reproducir"
+                  >
+                    {isThisTrackPlaying ? (
+                      <Pause size={15} fill="black" />
+                    ) : (
+                      <Play size={15} fill="black" className="ml-0.5" />
+                    )}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       {/* 5. Artistas Populares */}
       <section className="space-y-4">
