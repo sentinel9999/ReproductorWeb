@@ -269,8 +269,8 @@ export default function Home() {
         
         <div className="flex-shrink-0">
           <a
-            href="/downloads/rokola-mobile.apk"
-            download="Rokola-Mobile.apk"
+            href="/downloads/Rokola_v1.0.24.apk"
+            download="Rokola_v1.0.24.apk"
             className="flex items-center gap-2.5 bg-green-500 hover:bg-green-400 text-black font-semibold px-6 py-3.5 rounded-full transition transform hover:scale-105 active:scale-95 shadow-lg cursor-pointer"
           >
             <Download size={18} />
