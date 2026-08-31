@@ -15,7 +15,9 @@ import {
   ListMusic, 
   Library, 
   ChevronRight,
-  Loader2
+  Loader2,
+  Smartphone,
+  Download
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -247,6 +249,33 @@ export default function Home() {
               </div>
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* NEW: Banner de Descarga de la Aplicación Móvil (APK) */}
+      <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-zinc-900 via-zinc-900/90 to-zinc-950 border border-zinc-800 p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl">
+        <div className="space-y-3 max-w-xl">
+          <div className="flex items-center gap-2 text-green-400 text-xs font-semibold uppercase tracking-wider">
+            <Smartphone size={16} />
+            <span>Lleva la música contigo</span>
+          </div>
+          <h2 className="text-xl md:text-2xl font-bold text-white">
+            Disfruta de Rokola en tu dispositivo Android
+          </h2>
+          <p className="text-zinc-400 text-sm">
+            Descarga nuestra aplicación móvil oficial y reproduce tus canciones favoritas sin interrupciones, con soporte offline y control total.
+          </p>
+        </div>
+        
+        <div className="flex-shrink-0">
+          <a
+            href="/downloads/rokola-mobile.apk"
+            download="Rokola-Mobile.apk"
+            className="flex items-center gap-2.5 bg-green-500 hover:bg-green-400 text-black font-semibold px-6 py-3.5 rounded-full transition transform hover:scale-105 active:scale-95 shadow-lg cursor-pointer"
+          >
+            <Download size={18} />
+            <span>Descargar APK</span>
+          </a>
         </div>
       </section>
 

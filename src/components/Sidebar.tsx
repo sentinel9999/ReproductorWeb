@@ -16,8 +16,7 @@ import {
   X,
   Search,
   LogIn,
-  LogOut,
-  User
+  LogOut
 } from 'lucide-react';
 
 const CATEGORIES = [
@@ -36,7 +35,7 @@ export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
 
-  // Se extrae currentUser (el nombre correcto del store)
+  // Usamos currentUser correctamente según el store de Zustand
   const { currentUser, isAuthenticated, logout } = useAuthStore();
 
   const handleSearch = (e: React.FormEvent) => {
@@ -48,7 +47,7 @@ export default function Sidebar() {
 
   return (
     <>
-      {/* Botón flotante para reabrir menú cuando está cerrado */}
+      {/* Botón flotante para reabrir menú en móviles o cuando está cerrado */}
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
