@@ -19,7 +19,6 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 
-// Artistas y álbumes estáticos de respaldo visual
 const POPULAR_ARTISTS: Artist[] = [
   {
     id: 'art-1',
@@ -82,9 +81,8 @@ export default function Home() {
   const [tracks, setTracks] = useState<Track[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Estados globales de reproductor y autenticación
   const { currentTrack, isPlaying, setTrack, setQueue, togglePlay } = usePlayerStore();
-  const user = useAuthStore((state) => state.user);
+  const currentUser = useAuthStore((state) => state.currentUser);
 
   useEffect(() => {
     async function loadTracks() {
@@ -132,7 +130,7 @@ export default function Home() {
         <div className="flex items-center gap-2 text-green-400 text-sm font-semibold tracking-wide uppercase">
           <Sparkles size={16} />
           <span>
-            {user ? `¡Qué bueno verte de vuelta, ${user.name}!` : '¡Bienvenido a Rokola!'}
+            {currentUser ? `¡Qué bueno verte de vuelta, ${currentUser.name}!` : '¡Bienvenido a Rokola!'}
           </span>
         </div>
         <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-white">
@@ -201,7 +199,7 @@ export default function Home() {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
           <Link
-            href="/library"
+            href="/profile"
             className="bg-gradient-to-br from-indigo-900/40 to-zinc-900/80 hover:from-indigo-900/60 hover:to-zinc-900 p-5 rounded-2xl border border-indigo-500/20 hover:border-indigo-500/40 transition flex items-center justify-between group shadow-lg"
           >
             <div className="flex items-center gap-4">
@@ -213,7 +211,7 @@ export default function Home() {
                   Tus Me Gusta
                 </h3>
                 <p className="text-xs text-zinc-400">
-                  {user ? `${user.likedSongIds.length} canciones guardadas` : 'Colección de favoritos'}
+                  {currentUser ? `${currentUser.likedSongIds.length} canciones guardadas` : 'Colección de favoritos'}
                 </p>
               </div>
             </div>
