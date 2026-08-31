@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { usePlayerStore } from '@/store/usePlaystore';
 import { Track } from '@/types/rokola';
@@ -14,8 +14,9 @@ import {
   Music, 
   Radio, 
   Disc, 
-  Mic2,
-  Headphones
+  Mic2, 
+  Headphones,
+  Loader2
 } from 'lucide-react';
 
 // 1. Categorías y Géneros con paletas de colores
@@ -39,7 +40,7 @@ const ALL_CATALOG_TRACKS: Track[] = [
     album: 'Acoustic Memories',
     duration: 100,
     coverUrl: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300&h=300&fit=crop',
-    audioUrl: 'https://www.bensound.com/bensound-music/bensound-acousticbreeze.mp3',
+    audioUrl: 'https://cdn.pixabay.com/download/audio/2022/01/18/audio_d0a13f69d2.mp3',
   },
   {
     id: '2',
@@ -48,7 +49,7 @@ const ALL_CATALOG_TRACKS: Track[] = [
     album: 'Summer Nights',
     duration: 140,
     coverUrl: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=300&h=300&fit=crop',
-    audioUrl: 'https://www.bensound.com/bensound-music/bensound-sunny.mp3',
+    audioUrl: 'https://cdn.pixabay.com/download/audio/2021/08/04/audio_0625c1539c.mp3',
   },
   {
     id: '3',
@@ -57,7 +58,7 @@ const ALL_CATALOG_TRACKS: Track[] = [
     album: 'Neon Nights',
     duration: 179,
     coverUrl: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop',
-    audioUrl: 'https://www.bensound.com/bensound-music/bensound-energy.mp3',
+    audioUrl: 'https://cdn.pixabay.com/download/audio/2022/10/14/audio_9939f792cb.mp3',
   },
   {
     id: '4',
@@ -66,11 +67,12 @@ const ALL_CATALOG_TRACKS: Track[] = [
     album: 'Acoustic Memories',
     duration: 205,
     coverUrl: 'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=300&h=300&fit=crop',
-    audioUrl: 'https://www.bensound.com/bensound-music/bensound-acousticbreeze.mp3',
+    audioUrl: 'https://cdn.pixabay.com/download/audio/2022/03/15/audio_c8c8a73467.mp3',
   },
 ];
 
-export default function ExplorePage() {
+// Componente interno que maneja la lógica y lee useSearchParams
+function ExploreContent() {
   const searchParams = useSearchParams();
   const initialQuery = searchParams.get('q') || '';
   
@@ -79,19 +81,24 @@ export default function ExplorePage() {
 
   const { currentTrack, isPlaying, setQueue } = usePlayerStore();
 
+  useEffect(() => {
+    setSearchQuery(initialQuery);
+  }, [initialQuery]);
+
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
     return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
   };
 
-  // Filtrado reactivo por término de búsqueda o género
+  // Filtrado reactivo por término de búsqueda
   const searchResults = ALL_CATALOG_TRACKS.filter((track) => {
-    const matchesSearch = 
-      track.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      track.artist.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (track.album && track.album.toLowerCase().includes(searchQuery.toLowerCase()));
-    return matchesSearch;
+    const query = searchQuery.toLowerCase();
+    return (
+      track.title.toLowerCase().includes(query) ||
+      track.artist.toLowerCase().includes(query) ||
+      (track.album && track.album.toLowerCase().includes(query))
+    );
   });
 
   return (
@@ -107,7 +114,7 @@ export default function ExplorePage() {
         </h1>
       </header>
 
-      {/* 2. Barra de búsqueda principal en página */}
+      {/* 2. Barra de búsqueda */}
       <div className="relative max-w-xl">
         <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" />
         <input
@@ -119,7 +126,7 @@ export default function ExplorePage() {
         />
       </div>
 
-      {/* 3. Resultados de Búsqueda (Se muestran si el usuario escribió algo) */}
+      {/* 3. Resultados de Búsqueda */}
       {searchQuery.trim() !== '' && (
         <section className="space-y-4">
           <h2 className="text-xl font-bold text-white">
@@ -180,7 +187,7 @@ export default function ExplorePage() {
         </section>
       )}
 
-      {/* 4. Cuadrícula de Géneros y Estados de Ánimo */}
+      {/* 4. Géneros */}
       <section className="space-y-4">
         <h2 className="text-xl font-bold text-white">Explorar Todo por Género</h2>
 
@@ -214,5 +221,21 @@ export default function ExplorePage() {
         </div>
       </section>
     </div>
+  );
+}
+
+// Exportación por defecto envuelta en Suspense
+export default function ExplorePage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex flex-col items-center justify-center min-h-[50vh] gap-3 text-zinc-400">
+          <Loader2 className="animate-spin text-green-500" size={32} />
+          <p className="text-sm">Cargando explorador...</p>
+        </div>
+      }
+    >
+      <ExploreContent />
+    </Suspense>
   );
 }
