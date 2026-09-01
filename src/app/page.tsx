@@ -252,33 +252,64 @@ export default function Home() {
         </div>
       </section>
 
-      {/* NEW: Banner de Descarga de la Aplicación Móvil (APK) */}
-      <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-zinc-900 via-zinc-900/90 to-zinc-950 border border-zinc-800 p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl">
+      {/* Banner de Descarga de la Aplicación Móvil con Versión Visible */}
+      <section className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-zinc-900 via-zinc-900/90 to-zinc-950 border border-zinc-800 p-6 md:p-8 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 shadow-xl">
         <div className="space-y-3 max-w-xl">
-          <div className="flex items-center gap-2 text-green-400 text-xs font-semibold uppercase tracking-wider">
-            <Smartphone size={16} />
-            <span>Lleva la música contigo</span>
+          {/* Insignia con la última versión */}
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-1.5 text-green-400 text-xs font-semibold uppercase tracking-wider">
+              <Smartphone size={16} />
+              <span>Lleva la música contigo</span>
+            </div>
+            <span className="text-zinc-600 text-xs">•</span>
+            <span className="px-2.5 py-0.5 rounded-full bg-green-500/10 border border-green-500/30 text-green-400 font-mono text-xs font-bold tracking-wide">
+              v1.0.25 (Última versión)
+            </span>
           </div>
+
           <h2 className="text-xl md:text-2xl font-bold text-white">
             Disfruta de Rokola en tu dispositivo Android
           </h2>
+
           <p className="text-zinc-400 text-sm">
-            Descarga nuestra aplicación móvil oficial y reproduce tus canciones favoritas sin interrupciones, con soporte offline y control total.
+            Descarga nuestra aplicación móvil oficial y reproduce tus canciones favoritas sin interrupciones, con soporte offline y lectura de carátulas mejorada.
           </p>
+
+          {/* Resumen de cambios de la v1.0.25 */}
+          <div className="pt-1">
+            <p className="text-[11px] font-semibold text-zinc-300 uppercase tracking-wider mb-1.5">
+              Novedades de la versión:
+            </p>
+            <ul className="space-y-1 text-xs text-zinc-400">
+              <li className="flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-green-400 flex-shrink-0" />
+                <span>Soporte y lectura de tags ID3 / carátulas en archivos WAV.</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-green-400 flex-shrink-0" />
+                <span>Detección automática de portadas físicas incrustadas.</span>
+              </li>
+            </ul>
+          </div>
         </div>
-        
-        <div className="flex-shrink-0">
+
+        {/* Botón con versión explícita */}
+        <div className="flex flex-col sm:flex-row lg:flex-col items-start lg:items-end gap-2 flex-shrink-0 w-full lg:w-auto">
           <a
-            href="/downloads/Rokola_v1.0.24.apk"
-            download="Rokola_v1.0.24.apk"
-            className="flex items-center gap-2.5 bg-green-500 hover:bg-green-400 text-black font-semibold px-6 py-3.5 rounded-full transition transform hover:scale-105 active:scale-95 shadow-lg cursor-pointer"
+            href="/downloads/Rokola_v1.0.25.apk"
+            download="Rokola_v1.0.25.apk"
+            className="w-full sm:w-auto flex items-center justify-center gap-2.5 bg-green-500 hover:bg-green-400 text-black font-bold px-6 py-3.5 rounded-full transition transform hover:scale-105 active:scale-95 shadow-lg cursor-pointer text-sm"
           >
             <Download size={18} />
-            <span>Descargar APK</span>
+            <span>Descargar APK (v1.0.25)</span>
           </a>
+          <span className="text-[11px] text-zinc-500">
+            Actualización acumulativa sobre v1.0.24
+          </span>
         </div>
       </section>
 
+      
       {/* 4. Escuchado Recientemente */}
       {recentTracks.length > 0 && (
         <section className="space-y-4">
