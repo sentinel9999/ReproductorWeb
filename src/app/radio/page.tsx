@@ -12,7 +12,8 @@ import {
   Volume2, 
   Loader2, 
   Sparkles,
-  Signal
+  Signal,
+  Heart
 } from 'lucide-react';
 
 interface RadioStationAPI {
@@ -25,6 +26,15 @@ interface RadioStationAPI {
   countrycode: string;
   votes: number;
   clickcount: number;
+}
+
+// Estructura sincronizada con la Biblioteca
+interface SavedRadioStation {
+  id: string;
+  name: string;
+  genre: string;
+  streamUrl: string;
+  logoUrl: string;
 }
 
 const COUNTRIES = [
@@ -54,7 +64,22 @@ export default function RadioPage() {
   const [selectedCountry, setSelectedCountry] = useState('');
   const [selectedTag, setSelectedTag] = useState('');
 
+  // Estado de Radios Favoritas sincronizado con localStorage
+  const [favStations, setFavStations] = useState<SavedRadioStation[]>([]);
+
   const { currentTrack, isPlaying, setTrack, togglePlay } = usePlayerStore();
+
+  // Cargar favoritas al montar
+  useEffect(() => {
+    const saved = localStorage.getItem('rokola_favs_radio');
+    if (saved) {
+      try {
+        setFavStations(JSON.parse(saved));
+      } catch (e) {
+        console.error('Error cargando radios favoritas:', e);
+      }
+    }
+  }, []);
 
   const fetchStations = async () => {
     setLoading(true);
@@ -75,7 +100,6 @@ export default function RadioPage() {
         params.append('tag', selectedTag);
       }
 
-      // Servidor público distribuido de Radio Browser API
       const res = await fetch(`https://de1.api.radio-browser.info/json/stations/search?${params.toString()}`);
       if (res.ok) {
         const data: RadioStationAPI[] = await res.json();
@@ -96,12 +120,37 @@ export default function RadioPage() {
     return () => clearTimeout(timer);
   }, [selectedCountry, selectedTag, searchQuery]);
 
+  // Alternar favorito y persistir para la Biblioteca
+  const toggleFavStation = (e: React.MouseEvent, station: RadioStationAPI) => {
+    e.stopPropagation();
+    const exists = favStations.some((s) => s.id === station.stationuuid);
+    let updated: SavedRadioStation[];
+
+    if (exists) {
+      updated = favStations.filter((s) => s.id !== station.stationuuid);
+    } else {
+      const newFav: SavedRadioStation = {
+        id: station.stationuuid,
+        name: station.name.trim(),
+        genre: station.tags ? station.tags.split(',')[0].trim() : station.country || 'Radio en Vivo',
+        streamUrl: station.url_resolved,
+        logoUrl: station.favicon && station.favicon.startsWith('http')
+          ? station.favicon
+          : 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=400&h=400&fit=crop',
+      };
+      updated = [newFav, ...favStations];
+    }
+
+    setFavStations(updated);
+    localStorage.setItem('rokola_favs_radio', JSON.stringify(updated));
+  };
+
   const handlePlayStation = (station: RadioStationAPI) => {
     const radioTrack: Track = {
       id: `radio-${station.stationuuid}`,
       title: station.name.trim(),
       artist: station.country ? `${station.country} • Radio en Vivo` : 'Radio en Vivo',
-      duration: 0, // Indica transmisión continua al reproductor
+      duration: 0,
       coverUrl: station.favicon && station.favicon.startsWith('http')
         ? station.favicon
         : 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=400&h=400&fit=crop',
@@ -117,6 +166,7 @@ export default function RadioPage() {
 
   const featuredStation = stations[0];
   const isFeaturedPlaying = currentTrack?.id === `radio-${featuredStation?.stationuuid}` && isPlaying;
+  const isFeaturedFav = featuredStation && favStations.some((s) => s.id === featuredStation.stationuuid);
 
   return (
     <div className="p-6 md:p-10 max-w-7xl mx-auto space-y-8 pb-28">
@@ -156,7 +206,7 @@ export default function RadioPage() {
               {featuredStation.country || 'Internacional'} • Géneros: {featuredStation.tags || 'Varios'}
             </p>
 
-            <div className="pt-2">
+            <div className="pt-2 flex items-center gap-3">
               <button
                 onClick={() => handlePlayStation(featuredStation)}
                 className="flex items-center gap-2 bg-green-500 hover:bg-green-400 text-black font-semibold text-sm px-6 py-2.5 rounded-full transition transform hover:scale-105 active:scale-95 shadow-lg cursor-pointer"
@@ -172,6 +222,19 @@ export default function RadioPage() {
                     <span>Sintonizar</span>
                   </>
                 )}
+              </button>
+
+              <button
+                type="button"
+                onClick={(e) => toggleFavStation(e, featuredStation)}
+                className={`p-2.5 rounded-full transition border cursor-pointer ${
+                  isFeaturedFav
+                    ? 'bg-red-500/15 border-red-500/40 text-red-500'
+                    : 'bg-zinc-800/80 border-zinc-700/80 text-zinc-400 hover:text-white hover:bg-zinc-800'
+                }`}
+                title={isFeaturedFav ? 'Quitar de favoritas' : 'Guardar en favoritas'}
+              >
+                <Heart size={18} fill={isFeaturedFav ? 'currentColor' : 'none'} />
               </button>
             </div>
           </div>
@@ -192,7 +255,6 @@ export default function RadioPage() {
       {/* 3. Filtros: Buscador, Selector de País y Género */}
       <div className="space-y-4">
         <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3">
-          {/* Input Buscador */}
           <div className="relative flex-1">
             <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none" />
             <input
@@ -204,7 +266,6 @@ export default function RadioPage() {
             />
           </div>
 
-          {/* Selector de País */}
           <div className="flex items-center gap-2">
             <Globe size={16} className="text-zinc-400" />
             <select
@@ -253,6 +314,7 @@ export default function RadioPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {stations.map((station) => {
             const isThisPlaying = currentTrack?.id === `radio-${station.stationuuid}` && isPlaying;
+            const isFav = favStations.some((s) => s.id === station.stationuuid);
 
             return (
               <div
@@ -289,14 +351,32 @@ export default function RadioPage() {
                   </div>
                 </div>
 
-                <button
-                  className={`w-8 h-8 rounded-full flex items-center justify-center text-black flex-shrink-0 shadow transition transform ${
-                    isThisPlaying ? 'bg-green-500 scale-100' : 'bg-white group-hover:bg-green-500 group-hover:scale-105'
-                  }`}
-                  aria-label="Reproducir estación"
-                >
-                  {isThisPlaying ? <Pause size={13} fill="black" /> : <Play size={13} fill="black" className="ml-0.5" />}
-                </button>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  {/* Botón Favoritas */}
+                  <button
+                    type="button"
+                    onClick={(e) => toggleFavStation(e, station)}
+                    className={`p-2 rounded-full transition cursor-pointer ${
+                      isFav 
+                        ? 'text-red-500 hover:text-red-400' 
+                        : 'text-zinc-500 hover:text-zinc-200'
+                    }`}
+                    title={isFav ? 'Quitar de favoritas' : 'Guardar en favoritas'}
+                  >
+                    <Heart size={16} fill={isFav ? 'currentColor' : 'none'} />
+                  </button>
+
+                  {/* Botón Reproducir */}
+                  <button
+                    type="button"
+                    className={`w-8 h-8 rounded-full flex items-center justify-center text-black flex-shrink-0 shadow transition transform ${
+                      isThisPlaying ? 'bg-green-500 scale-100' : 'bg-white group-hover:bg-green-500 group-hover:scale-105'
+                    }`}
+                    aria-label="Reproducir estación"
+                  >
+                    {isThisPlaying ? <Pause size={13} fill="black" /> : <Play size={13} fill="black" className="ml-0.5" />}
+                  </button>
+                </div>
               </div>
             );
           })}

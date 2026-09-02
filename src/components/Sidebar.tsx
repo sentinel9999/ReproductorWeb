@@ -33,7 +33,7 @@ const CATEGORIES = [
 
 export default function Sidebar() {
   const [isOpen, setIsOpen] = useState(false);
-  const [isPinned, setIsPinned] = useState(false); // Permite fijarla si no quieres que se cierre
+  const [isPinned, setIsPinned] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const pathname = usePathname();
   const router = useRouter();
@@ -41,7 +41,6 @@ export default function Sidebar() {
 
   const { currentUser, isAuthenticated, logout } = useAuthStore();
 
-  // Abrir de inmediato al entrar con el mouse
   const handleMouseEnter = () => {
     if (closeTimeoutRef.current) {
       clearTimeout(closeTimeoutRef.current);
@@ -50,12 +49,11 @@ export default function Sidebar() {
     setIsOpen(true);
   };
 
-  // Cerrar suavemente al salir el mouse (solo si no está fijada)
   const handleMouseLeave = () => {
     if (isPinned) return;
     closeTimeoutRef.current = setTimeout(() => {
       setIsOpen(false);
-    }, 200); // 200ms de gracia para evitar cierres accidentales
+    }, 200);
   };
 
   const handleSearch = (e: React.FormEvent) => {
@@ -67,7 +65,6 @@ export default function Sidebar() {
   };
 
   const handleNavClick = () => {
-    // En móviles o si no está fijada, se contrae al elegir sección
     if (!isPinned || window.innerWidth < 768) {
       setIsOpen(false);
     }
@@ -75,28 +72,27 @@ export default function Sidebar() {
 
   return (
     <>
-      {/* 1. Sensor invisible en el borde izquierdo de la pantalla (Desktop) */}
+      {/* Sensor de proximidad para PC */}
       <div
         onMouseEnter={handleMouseEnter}
         className="fixed top-0 left-0 w-3 h-full z-40 hidden md:block"
         aria-hidden="true"
       />
 
-      {/* 2. Botón flotante superior (se abre al hacer clic o al pasar el cursor) */}
+      {/* Botón flotante limpio y minimalista (sin texto 'Menú') */}
       <button
         type="button"
         onMouseEnter={handleMouseEnter}
         onClick={() => setIsOpen(!isOpen)}
-        className={`fixed top-3 left-3 z-40 p-2.5 bg-zinc-900/90 hover:bg-zinc-800 text-zinc-300 hover:text-white rounded-xl border border-zinc-800 shadow-xl backdrop-blur-md transition-all duration-200 cursor-pointer flex items-center gap-2 ${
-          isOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'
+        className={`fixed top-4 left-4 z-40 w-10 h-10 rounded-full bg-zinc-900/80 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-800/80 shadow-2xl backdrop-blur-md transition-all duration-200 cursor-pointer flex items-center justify-center active:scale-90 ${
+          isOpen ? 'opacity-0 pointer-events-none scale-75' : 'opacity-100 scale-100'
         }`}
-        aria-label="Abrir menú"
+        aria-label="Menú de navegación"
       >
         <Menu size={18} />
-        <span className="text-xs font-semibold md:hidden">Menú</span>
       </button>
 
-      {/* 3. Fondo oscuro en Móviles al abrir */}
+      {/* Backdrop oscuro en móvil */}
       {isOpen && (
         <div
           onClick={() => setIsOpen(false)}
@@ -104,7 +100,7 @@ export default function Sidebar() {
         />
       )}
 
-      {/* 4. Barra Lateral Desplegable */}
+      {/* Sidebar Drawer */}
       <aside
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
@@ -112,7 +108,6 @@ export default function Sidebar() {
           isOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        {/* Cabecera, Buscador y Categorías */}
         <div className="flex flex-col min-h-0 flex-1">
           <div className="flex items-center justify-between p-5 border-b border-zinc-900">
             <Link 
@@ -125,7 +120,6 @@ export default function Sidebar() {
             </Link>
 
             <div className="flex items-center gap-1">
-              {/* Botón para Fijar/Desfijar en PC */}
               <button
                 type="button"
                 onClick={() => setIsPinned(!isPinned)}
@@ -134,12 +128,11 @@ export default function Sidebar() {
                     ? 'text-green-400 bg-green-500/10 border border-green-500/30' 
                     : 'text-zinc-400 hover:text-white hover:bg-zinc-800'
                 }`}
-                title={isPinned ? 'Desfijar (cerrar al retirar mouse)' : 'Fijar menú abierto'}
+                title={isPinned ? 'Desfijar menú' : 'Fijar menú abierto'}
               >
                 {isPinned ? <Pin size={17} /> : <PinOff size={17} />}
               </button>
 
-              {/* Botón cerrar en móviles */}
               <button
                 type="button"
                 onClick={() => setIsOpen(false)}
@@ -196,7 +189,7 @@ export default function Sidebar() {
           </nav>
         </div>
 
-        {/* Perfil del Usuario / Iniciar Sesión */}
+        {/* Perfil del Usuario */}
         <div className="p-3 border-t border-zinc-900 bg-zinc-950/60 flex-shrink-0">
           {isAuthenticated && currentUser ? (
             <div className="flex items-center justify-between gap-2">

@@ -1,165 +1,114 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { usePlayerStore } from '@/store/usePlaystore';
 import { Track, Playlist } from '@/types/rokola';
-import { Play, Pause, Clock, ChevronLeft, Trash2, ListMusic, Music } from 'lucide-react';
+import { Play, Pause, Clock, ChevronLeft, Trash2, Loader2, Music, AlertTriangle, X } from 'lucide-react';
 import Link from 'next/link';
 
-// Playlists de respaldo por defecto
-const STATIC_PLAYLISTS: Record<string, Playlist> = {
-  p1: {
-    id: 'p1',
-    name: 'Favoritos de la Semana',
-    description: 'Tus temas más escuchados compilados automáticamente para ti.',
-    coverUrl: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=600&h=600&fit=crop',
-    tracks: [
-      {
-        id: '1',
-        title: 'Acoustic Breeze',
-        artist: 'Benjamin Tissot',
-        album: 'Acoustic Memories',
-        duration: 100,
-        coverUrl: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300&h=300&fit=crop',
-        audioUrl: 'https://cdn.pixabay.com/download/audio/2022/01/18/audio_d0a13f69d2.mp3',
-      },
-      {
-        id: '2',
-        title: 'Sunny Beats',
-        artist: 'Bensound',
-        album: 'Summer Nights',
-        duration: 140,
-        coverUrl: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=300&h=300&fit=crop',
-        audioUrl: 'https://cdn.pixabay.com/download/audio/2021/08/04/audio_0625c1539c.mp3',
-      },
-      {
-        id: '3',
-        title: 'Energy Pulse',
-        artist: 'Electronic Waves',
-        album: 'Neon Nights',
-        duration: 179,
-        coverUrl: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop',
-        audioUrl: 'https://cdn.pixabay.com/download/audio/2022/10/14/audio_9939f792cb.mp3',
-      },
-    ],
-  },
-  p2: {
-    id: 'p2',
-    name: 'Para Concentrarse',
-    description: 'Música instrumental, ondas suaves y ambient para estudiar o trabajar.',
-    coverUrl: 'https://images.unsplash.com/photo-1501386761578-eac5c94b800a?w=600&h=600&fit=crop',
-    tracks: [
-      {
-        id: '4',
-        title: 'Slow Motion',
-        artist: 'Chillout Lab',
-        album: 'Acoustic Memories',
-        duration: 205,
-        coverUrl: 'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=300&h=300&fit=crop',
-        audioUrl: 'https://cdn.pixabay.com/download/audio/2022/03/15/audio_c8c8a73467.mp3',
-      },
-    ],
-  },
-  p3: {
-    id: 'p3',
-    name: 'Entrenamiento & Gym',
-    description: 'Ritmos rápidos y enérgicos para darlo todo en cada sesión.',
-    coverUrl: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=600&h=600&fit=crop',
-    tracks: [],
-  },
-};
-
 export default function PlaylistDetailPage() {
-  const router = useRouter();
   const params = useParams();
+  const router = useRouter();
   const rawId = params?.id;
   const playlistId = Array.isArray(rawId) ? rawId[0] : (rawId as string) || 'p1';
 
   const [playlist, setPlaylist] = useState<Playlist | null>(null);
+  const [tracks, setTracks] = useState<Track[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Estado para el modal personalizado de eliminación (reemplaza window.confirm)
+  const [trackToDelete, setTrackToDelete] = useState<{ id: string; title: string } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const { currentTrack, isPlaying, setQueue, togglePlay } = usePlayerStore();
 
   useEffect(() => {
-    // 1. Buscar en playlists creadas por el usuario en localStorage
-    const saved = localStorage.getItem('rokola_custom_playlists');
-    if (saved) {
+    async function loadPlaylist() {
       try {
-        const parsed: Playlist[] = JSON.parse(saved);
-        const found = parsed.find((p) => p.id === playlistId);
-        if (found) {
-          setPlaylist(found);
-          setLoading(false);
-          return;
+        // 1. Intentar cargar desde las playlists personalizadas de localStorage
+        const savedPlaylists = localStorage.getItem('rokola_custom_playlists');
+        if (savedPlaylists) {
+          const parsed: Playlist[] = JSON.parse(savedPlaylists);
+          const found = parsed.find((p) => p.id === playlistId);
+          if (found) {
+            setPlaylist(found);
+            setTracks(found.tracks || []);
+            setLoading(false);
+            return;
+          }
         }
+
+        // 2. Si no es personalizada, cargar canciones de la API
+        const res = await fetch(`/api/tracks`);
+        const allTracks: Track[] = await res.json();
+        
+        setPlaylist({
+          id: playlistId,
+          name: playlistId === 'p1' ? 'Favoritos de la Semana' : 'Tu Playlist Personal',
+          description: 'Lista interactiva de reproducción.',
+          coverUrl: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=600&h=600&fit=crop',
+          tracks: allTracks,
+        });
+        setTracks(allTracks);
       } catch (err) {
-        console.error('Error leyendo playlists de localStorage:', err);
+        console.error('Error cargando playlist:', err);
+      } finally {
+        setLoading(false);
       }
     }
 
-    // 2. Si no es una lista personalizada, cargar desde el catálogo estático
-    setPlaylist(STATIC_PLAYLISTS[playlistId] || STATIC_PLAYLISTS['p1']);
-    setLoading(false);
+    loadPlaylist();
   }, [playlistId]);
 
-  if (loading || !playlist) {
-    return (
-      <div className="p-12 text-center text-zinc-500 text-sm">
-        Cargando playlist...
-      </div>
-    );
-  }
+  // Ejecución de borrado sin alertas del navegador
+  const confirmRemoveTrack = async () => {
+    if (!trackToDelete) return;
 
-  const playlistTracks = playlist.tracks || [];
+    setIsDeleting(true);
+    const trackId = trackToDelete.id;
+
+    try {
+      // Intentar borrado en backend
+      await fetch(`/api/playlists/${playlistId}/tracks/${trackId}`, {
+        method: 'DELETE',
+      });
+    } catch (e) {
+      console.warn('Operación en modo local');
+    }
+
+    // Actualizar lista en pantalla
+    const updatedTracks = tracks.filter((t) => t.id !== trackId);
+    setTracks(updatedTracks);
+
+    // Actualizar en localStorage si es una playlist guardada
+    const saved = localStorage.getItem('rokola_custom_playlists');
+    if (saved) {
+      try {
+        const playlists: Playlist[] = JSON.parse(saved);
+        const updatedPlaylists = playlists.map((p) => {
+          if (p.id === playlistId) {
+            return { ...p, tracks: updatedTracks };
+          }
+          return p;
+        });
+        localStorage.setItem('rokola_custom_playlists', JSON.stringify(updatedPlaylists));
+      } catch (e) {}
+    }
+
+    setIsDeleting(false);
+    setTrackToDelete(null);
+  };
+
   const isCurrentPlaylistPlaying =
-    playlistTracks.length > 0 &&
-    playlistTracks.some((t) => t.id === currentTrack?.id) &&
-    isPlaying;
+    tracks.length > 0 && tracks.some((t) => t.id === currentTrack?.id) && isPlaying;
 
   const handlePlayPlaylist = () => {
     if (isCurrentPlaylistPlaying) {
       togglePlay();
-    } else if (playlistTracks.length > 0) {
-      setQueue(playlistTracks, 0);
+    } else if (tracks.length > 0) {
+      setQueue(tracks, 0);
     }
-  };
-
-  // Quitar una canción de la playlist
-  const handleRemoveTrack = (trackId: string, trackTitle: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    const confirmed = window.confirm(`¿Quitar "${trackTitle}" de esta playlist?`);
-    if (!confirmed) return;
-
-    const updatedTracks = playlistTracks.filter((t) => t.id !== trackId);
-    const updatedPlaylist = { ...playlist, tracks: updatedTracks };
-    setPlaylist(updatedPlaylist);
-
-    // Guardar cambios en localStorage
-    const saved = localStorage.getItem('rokola_custom_playlists');
-    if (saved) {
-      try {
-        const parsed: Playlist[] = JSON.parse(saved);
-        const updatedAll = parsed.map((p) => (p.id === playlist.id ? updatedPlaylist : p));
-        localStorage.setItem('rokola_custom_playlists', JSON.stringify(updatedAll));
-      } catch (err) {
-        console.error('Error actualizando playlist en almacenamiento:', err);
-      }
-    }
-  };
-
-  // Eliminar la playlist por completo
-  const handleDeletePlaylist = () => {
-    const confirmed = window.confirm(`¿Seguro que deseas eliminar la playlist "${playlist.name}"?`);
-    if (!confirmed) return;
-
-    const saved = localStorage.getItem('rokola_custom_playlists');
-    if (saved) {
-      const parsed: Playlist[] = JSON.parse(saved);
-      const updated = parsed.filter((p) => p.id !== playlist.id);
-      localStorage.setItem('rokola_custom_playlists', JSON.stringify(updated));
-    }
-    router.push('/library');
   };
 
   const formatDuration = (seconds: number) => {
@@ -168,140 +117,100 @@ export default function PlaylistDetailPage() {
     return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
   };
 
+  if (loading || !playlist) {
+    return <div className="p-10 text-center text-zinc-500 text-sm">Cargando playlist...</div>;
+  }
+
   return (
     <div className="p-6 md:p-10 max-w-6xl mx-auto space-y-8 pb-28">
-      {/* Botón Volver */}
       <Link
         href="/library"
-        className="inline-flex items-center gap-1.5 text-xs text-zinc-400 hover:text-white transition font-medium"
+        className="inline-flex items-center gap-1.5 text-xs text-zinc-400 hover:text-white transition font-medium cursor-pointer"
       >
         <ChevronLeft size={16} />
         <span>Volver a Biblioteca</span>
       </Link>
 
-      {/* Cabecera de la Playlist */}
+      {/* Cabecera */}
       <div className="flex flex-col sm:flex-row items-center sm:items-end gap-6 pb-6 border-b border-zinc-900">
-        <div className="w-48 h-48 sm:w-52 sm:h-52 rounded-xl overflow-hidden shadow-2xl border border-zinc-800/80 flex-shrink-0 bg-zinc-900">
-          <img
-            src={playlist.coverUrl}
-            alt={playlist.name}
-            className="w-full h-full object-cover"
-            onError={(e) => {
-              e.currentTarget.src = 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=600&h=600&fit=crop';
-            }}
-          />
+        <div className="w-48 h-48 sm:w-52 sm:h-52 rounded-xl overflow-hidden shadow-2xl border border-zinc-800/80 flex-shrink-0 bg-zinc-950">
+          <img src={playlist.coverUrl} alt={playlist.name} className="w-full h-full object-cover" />
         </div>
 
-        <div className="flex flex-col items-center sm:items-start text-center sm:text-left gap-2 flex-1">
-          <span className="text-xs font-semibold uppercase tracking-wider text-green-400 flex items-center gap-1.5">
-            <ListMusic size={15} />
-            <span>Playlist</span>
-          </span>
-          <h1 className="text-3xl sm:text-4xl font-bold text-white tracking-tight">
-            {playlist.name}
-          </h1>
+        <div className="flex flex-col items-center sm:items-start text-center sm:text-left gap-2">
+          <span className="text-xs font-semibold uppercase tracking-wider text-green-400">Playlist</span>
+          <h1 className="text-3xl sm:text-4xl font-bold text-white tracking-tight">{playlist.name}</h1>
           <p className="text-zinc-400 text-sm max-w-xl">{playlist.description}</p>
           <p className="text-zinc-500 text-xs font-medium">
-            {playlistTracks.length} {playlistTracks.length === 1 ? 'canción' : 'canciones'}
+            {tracks.length} {tracks.length === 1 ? 'canción' : 'canciones'}
           </p>
 
-          <div className="mt-3 flex items-center gap-3">
-            {playlistTracks.length > 0 && (
-              <button
-                onClick={handlePlayPlaylist}
-                className="flex items-center gap-2 bg-green-500 hover:bg-green-400 text-black font-semibold text-sm px-6 py-2.5 rounded-full transition transform active:scale-95 shadow-md cursor-pointer"
-              >
-                {isCurrentPlaylistPlaying ? (
-                  <Pause size={16} fill="black" />
-                ) : (
-                  <Play size={16} fill="black" className="ml-0.5" />
-                )}
-                <span>{isCurrentPlaylistPlaying ? 'Pausar' : 'Reproducir Playlist'}</span>
-              </button>
-            )}
-
-            {playlist.id.startsWith('pl-') && (
-              <button
-                onClick={handleDeletePlaylist}
-                className="p-2.5 bg-zinc-900 hover:bg-red-500/20 text-zinc-400 hover:text-red-400 rounded-full border border-zinc-800 transition cursor-pointer"
-                title="Eliminar esta playlist"
-              >
-                <Trash2 size={16} />
-              </button>
-            )}
-          </div>
+          {tracks.length > 0 && (
+            <button
+              onClick={handlePlayPlaylist}
+              className="mt-3 flex items-center gap-2 bg-green-500 hover:bg-green-400 text-black font-semibold text-sm px-6 py-2.5 rounded-full transition transform active:scale-95 shadow-md cursor-pointer"
+            >
+              {isCurrentPlaylistPlaying ? <Pause size={16} fill="black" /> : <Play size={16} fill="black" className="ml-0.5" />}
+              <span>{isCurrentPlaylistPlaying ? 'Pausar' : 'Reproducir Playlist'}</span>
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Lista de Canciones de la Playlist */}
+      {/* Lista de Canciones */}
       <div className="space-y-1">
         <div className="grid grid-cols-12 text-xs uppercase font-semibold text-zinc-500 px-4 py-2 border-b border-zinc-900">
           <span className="col-span-1">#</span>
-          <span className="col-span-6 md:col-span-7">Título</span>
-          <span className="col-span-3 md:col-span-2 text-right">Duración</span>
-          <span className="col-span-2 text-right">Quitar</span>
+          <span className="col-span-8">Título</span>
+          <span className="col-span-2 text-right">Duración</span>
+          <span className="col-span-1 text-right">Quitar</span>
         </div>
 
-        {playlistTracks.length === 0 ? (
-          <div className="py-14 text-center text-zinc-500 space-y-2">
+        {tracks.length === 0 ? (
+          <div className="py-12 text-center text-zinc-500 space-y-2">
             <Music size={32} className="mx-auto text-zinc-600" />
-            <p className="text-sm">Esta playlist no tiene canciones añadidas aún.</p>
-            <p className="text-xs text-zinc-600">
-              Puedes agregar temas editándola desde tu biblioteca.
-            </p>
+            <p className="text-sm">Esta playlist no tiene canciones.</p>
           </div>
         ) : (
-          playlistTracks.map((track, index) => {
+          tracks.map((track, index) => {
             const isThisTrackPlaying = currentTrack?.id === track.id && isPlaying;
 
             return (
               <div
                 key={track.id}
-                onClick={() => setQueue(playlistTracks, index)}
+                onClick={() => setQueue(tracks, index)}
                 className="grid grid-cols-12 items-center px-4 py-3 rounded-lg hover:bg-zinc-900/60 cursor-pointer group transition text-sm"
               >
-                <span
-                  className={`col-span-1 font-medium ${
-                    isThisTrackPlaying ? 'text-green-400' : 'text-zinc-500'
-                  }`}
-                >
+                <span className={`col-span-1 font-medium ${isThisTrackPlaying ? 'text-green-400' : 'text-zinc-500'}`}>
                   {index + 1}
                 </span>
 
-                <div className="col-span-6 md:col-span-7 flex items-center gap-3 min-w-0">
-                  <img
-                    src={track.coverUrl}
-                    alt={track.title}
-                    className="w-10 h-10 rounded object-cover flex-shrink-0 bg-zinc-900"
-                    onError={(e) => {
-                      e.currentTarget.src =
-                        'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300&h=300&fit=crop';
-                    }}
-                  />
+                <div className="col-span-8 flex items-center gap-3 min-w-0">
+                  <img src={track.coverUrl} alt={track.title} className="w-10 h-10 rounded object-cover flex-shrink-0" />
                   <div className="truncate">
-                    <p
-                      className={`font-semibold truncate ${
-                        isThisTrackPlaying ? 'text-green-400' : 'text-white'
-                      }`}
-                    >
+                    <p className={`font-semibold truncate ${isThisTrackPlaying ? 'text-green-400' : 'text-white'}`}>
                       {track.title}
                     </p>
                     <p className="text-xs text-zinc-400 truncate mt-0.5">{track.artist}</p>
                   </div>
                 </div>
 
-                <span className="col-span-3 md:col-span-2 text-right text-zinc-400 text-xs font-medium">
+                <span className="col-span-2 text-right text-zinc-400 text-xs font-medium">
                   {formatDuration(track.duration)}
                 </span>
 
-                {/* Botón para remover de la lista */}
-                <div className="col-span-2 text-right">
+                {/* Botón que abre el modal interno en lugar del alert */}
+                <div className="col-span-1 text-right">
                   <button
-                    onClick={(e) => handleRemoveTrack(track.id, track.title, e)}
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setTrackToDelete({ id: track.id, title: track.title });
+                    }}
                     className="p-1.5 text-zinc-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition cursor-pointer"
-                    title="Quitar canción de la lista"
+                    title="Quitar de la lista"
                   >
-                    <Trash2 size={15} />
+                    <Trash2 size={16} />
                   </button>
                 </div>
               </div>
@@ -309,6 +218,47 @@ export default function PlaylistDetailPage() {
           })
         )}
       </div>
+
+      {/* MODAL PERSONALIZADO DE CONFIRMACIÓN */}
+      {trackToDelete && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-zinc-950 border border-zinc-800 rounded-2xl p-6 max-w-sm w-full shadow-2xl space-y-4 animate-in fade-in zoom-in-95">
+            <div className="flex items-center gap-3 text-red-400">
+              <div className="w-10 h-10 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-center flex-shrink-0">
+                <AlertTriangle size={20} />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-white">Quitar de la playlist</h3>
+                <p className="text-xs text-zinc-400">Esta acción no elimina el archivo original.</p>
+              </div>
+            </div>
+
+            <p className="text-xs text-zinc-300 bg-zinc-900/60 p-3 rounded-xl border border-zinc-800/80">
+              ¿Seguro que deseas quitar <strong className="text-white">&quot;{trackToDelete.title}&quot;</strong> de esta lista?
+            </p>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={() => setTrackToDelete(null)}
+                className="px-4 py-2 rounded-full text-xs font-semibold text-zinc-400 hover:text-white hover:bg-zinc-900 transition"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={confirmRemoveTrack}
+                className="px-4 py-2 rounded-full text-xs font-semibold bg-red-500 hover:bg-red-600 text-white transition flex items-center gap-1.5 shadow-md disabled:opacity-50"
+              >
+                {isDeleting && <Loader2 size={13} className="animate-spin" />}
+                <span>Quitar</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

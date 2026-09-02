@@ -5,13 +5,30 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { usePlayerStore } from '@/store/usePlaystore';
 import { Album, Track } from '@/types/rokola';
-import { Disc3, Play, Pause, Search, Plus, X, Music, Check, Edit2, Trash2 } from 'lucide-react';
+import { 
+  Disc3, 
+  Play, 
+  Pause, 
+  Search, 
+  Plus, 
+  X, 
+  Music, 
+  Check, 
+  Edit2, 
+  Trash2, 
+  Image as ImageIcon,
+  Link as LinkIcon,
+  Sparkles
+} from 'lucide-react';
 
-const DEFAULT_ALBUM_COVERS = [
-  'https://images.unsplash.com/photo-1465847899084-d164df4dedc6?w=500&h=500&fit=crop',
+// Las 6 portadas genéricas predefinidas
+const GENERIC_COVERS = [
   'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=500&h=500&fit=crop',
-  'https://images.unsplash.com/photo-1511192336575-5a79af67a629?w=500&h=500&fit=crop',
+  'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500&h=500&fit=crop',
+  'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=500&h=500&fit=crop',
+  'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=500&h=500&fit=crop',
   'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=500&h=500&fit=crop',
+  'https://images.unsplash.com/photo-1501386761578-eac5c94b800a?w=500&h=500&fit=crop',
 ];
 
 const INITIAL_ALBUMS: Album[] = [
@@ -20,7 +37,7 @@ const INITIAL_ALBUMS: Album[] = [
     title: 'Acoustic Memories',
     artist: 'Benjamin Tissot',
     year: '2024',
-    coverUrl: 'https://images.unsplash.com/photo-1465847899084-d164df4dedc6?w=500&h=500&fit=crop',
+    coverUrl: GENERIC_COVERS[0],
     tracks: [],
   },
   {
@@ -28,7 +45,7 @@ const INITIAL_ALBUMS: Album[] = [
     title: 'Summer Nights',
     artist: 'Various Artists',
     year: '2023',
-    coverUrl: 'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=500&h=500&fit=crop',
+    coverUrl: GENERIC_COVERS[2],
     tracks: [],
   },
   {
@@ -36,7 +53,7 @@ const INITIAL_ALBUMS: Album[] = [
     title: 'Neon Nights',
     artist: 'Electronic Waves',
     year: '2024',
-    coverUrl: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=500&h=500&fit=crop',
+    coverUrl: GENERIC_COVERS[3],
     tracks: [],
   },
 ];
@@ -53,8 +70,12 @@ export default function AlbumsPage() {
   const [title, setTitle] = useState('');
   const [artist, setArtist] = useState('');
   const [year, setYear] = useState('2026');
-  const [coverUrl, setCoverUrl] = useState('');
   const [selectedTrackIds, setSelectedTrackIds] = useState<string[]>([]);
+
+  // Las 3 opciones de portada
+  const [coverType, setCoverType] = useState<'first-track' | 'custom-url' | 'generic'>('first-track');
+  const [customCoverUrl, setCustomCoverUrl] = useState('');
+  const [selectedGenericCover, setSelectedGenericCover] = useState(GENERIC_COVERS[0]);
 
   const { currentTrack, isPlaying, setQueue, togglePlay } = usePlayerStore();
 
@@ -91,7 +112,9 @@ export default function AlbumsPage() {
     setTitle('');
     setArtist('');
     setYear('2026');
-    setCoverUrl('');
+    setCoverType('first-track');
+    setCustomCoverUrl('');
+    setSelectedGenericCover(GENERIC_COVERS[0]);
     setSelectedTrackIds([]);
     setIsModalOpen(true);
   };
@@ -102,7 +125,8 @@ export default function AlbumsPage() {
     setTitle(album.title);
     setArtist(album.artist);
     setYear(album.year || '2026');
-    setCoverUrl(album.coverUrl);
+    setCoverType('custom-url');
+    setCustomCoverUrl(album.coverUrl);
     setSelectedTrackIds(album.tracks ? album.tracks.map((t) => t.id) : []);
     setIsModalOpen(true);
   };
@@ -123,15 +147,25 @@ export default function AlbumsPage() {
     );
   };
 
+  // Resolver la carátula según la opción elegida
+  const resolveCoverUrl = (assignedTracks: Track[]): string => {
+    if (coverType === 'first-track') {
+      return assignedTracks[0]?.coverUrl || selectedGenericCover;
+    }
+    if (coverType === 'custom-url') {
+      return customCoverUrl.trim() || selectedGenericCover;
+    }
+    return selectedGenericCover;
+  };
+
   const handleSaveAlbum = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;
 
-    const randomCover = DEFAULT_ALBUM_COVERS[Math.floor(Math.random() * DEFAULT_ALBUM_COVERS.length)];
     const assignedTracks = availableTracks.filter((t) => selectedTrackIds.includes(t.id));
+    const finalCover = resolveCoverUrl(assignedTracks);
 
     if (editingAlbumId) {
-      // Modo Edición
       const updated = albums.map((alb) => {
         if (alb.id === editingAlbumId) {
           return {
@@ -139,7 +173,7 @@ export default function AlbumsPage() {
             title: title.trim(),
             artist: artist.trim() || 'Artista Desconocido',
             year: year.trim() || '2026',
-            coverUrl: coverUrl.trim() || alb.coverUrl || randomCover,
+            coverUrl: finalCover,
             tracks: assignedTracks,
           };
         }
@@ -148,13 +182,12 @@ export default function AlbumsPage() {
       setAlbums(updated);
       localStorage.setItem('rokola_custom_albums', JSON.stringify(updated));
     } else {
-      // Modo Creación
       const newAlbum: Album = {
         id: `alb-${Date.now()}`,
         title: title.trim(),
         artist: artist.trim() || 'Artista Desconocido',
         year: year.trim() || '2026',
-        coverUrl: coverUrl.trim() || randomCover,
+        coverUrl: finalCover,
         tracks: assignedTracks,
       };
       const updated = [newAlbum, ...albums];
@@ -171,6 +204,8 @@ export default function AlbumsPage() {
       a.artist.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const firstSelectedTrack = availableTracks.find((t) => selectedTrackIds.includes(t.id));
+
   return (
     <div className="p-6 md:p-10 max-w-7xl mx-auto space-y-8 pb-28">
       {/* Cabecera Principal */}
@@ -181,7 +216,7 @@ export default function AlbumsPage() {
             <span>Álbumes</span>
           </h1>
           <p className="text-zinc-400 text-sm mt-1">
-            Explora las canciones dentro de cada álbum o gestiona tus propias colecciones
+            Explora las canciones dentro de cada álbum o crea tus propias colecciones
           </p>
         </div>
 
@@ -223,18 +258,16 @@ export default function AlbumsPage() {
               onClick={() => router.push(`/album/${album.id}`)}
               className="bg-zinc-900/40 hover:bg-zinc-900/80 p-4 rounded-xl border border-zinc-800/60 hover:border-zinc-700 transition flex flex-col justify-between group shadow-sm relative cursor-pointer"
             >
-              {/* Contenedor Portada */}
               <div className="aspect-square mb-3.5 rounded-lg overflow-hidden border border-zinc-800/60 relative bg-zinc-950">
                 <img
                   src={album.coverUrl}
                   alt={album.title}
                   className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
                   onError={(e) => {
-                    e.currentTarget.src = DEFAULT_ALBUM_COVERS[0];
+                    e.currentTarget.src = GENERIC_COVERS[0];
                   }}
                 />
 
-                {/* Botón flotante para reproducir directo */}
                 {album.tracks && album.tracks.length > 0 && (
                   <button
                     onClick={(e) => {
@@ -255,7 +288,6 @@ export default function AlbumsPage() {
                   </button>
                 )}
 
-                {/* Acciones de Editar / Borrar */}
                 <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
                   <button
                     onClick={(e) => openEditModal(album, e)}
@@ -274,7 +306,6 @@ export default function AlbumsPage() {
                 </div>
               </div>
 
-              {/* Información */}
               <div>
                 <h3 className="font-semibold text-sm text-white truncate group-hover:text-green-400 transition">
                   {album.title}
@@ -291,7 +322,7 @@ export default function AlbumsPage() {
         })}
       </div>
 
-      {/* Modal Crear / Editar */}
+      {/* Modal Crear / Editar Álbum */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-zinc-950 border border-zinc-800 rounded-2xl p-6 max-w-lg w-full shadow-2xl space-y-4 animate-in fade-in zoom-in-95 max-h-[90vh] flex flex-col">
@@ -344,15 +375,111 @@ export default function AlbumsPage() {
                 </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-zinc-400 mb-1">URL de Portada (Opcional)</label>
-                <input
-                  type="url"
-                  value={coverUrl}
-                  onChange={(e) => setCoverUrl(e.target.value)}
-                  placeholder="https://images.unsplash.com/..."
-                  className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-green-500 transition"
-                />
+              {/* SECCIÓN: 3 OPCIONES PARA LA PORTADA */}
+              <div className="space-y-2 pt-2 border-t border-zinc-900">
+                <label className="block text-xs font-semibold text-zinc-300">
+                  Elige la Portada del Álbum
+                </label>
+
+                {/* Selector de las 3 opciones */}
+                <div className="grid grid-cols-3 gap-2 p-1 bg-zinc-900 rounded-xl border border-zinc-800">
+                  <button
+                    type="button"
+                    onClick={() => setCoverType('first-track')}
+                    className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-xs font-medium transition cursor-pointer ${
+                      coverType === 'first-track' ? 'bg-zinc-800 text-green-400 shadow' : 'text-zinc-400 hover:text-white'
+                    }`}
+                  >
+                    <ImageIcon size={13} />
+                    <span>1ª Canción</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCoverType('custom-url')}
+                    className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-xs font-medium transition cursor-pointer ${
+                      coverType === 'custom-url' ? 'bg-zinc-800 text-green-400 shadow' : 'text-zinc-400 hover:text-white'
+                    }`}
+                  >
+                    <LinkIcon size={13} />
+                    <span>Poner URL</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCoverType('generic')}
+                    className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-xs font-medium transition cursor-pointer ${
+                      coverType === 'generic' ? 'bg-zinc-800 text-green-400 shadow' : 'text-zinc-400 hover:text-white'
+                    }`}
+                  >
+                    <Sparkles size={13} />
+                    <span>6 Genéricas</span>
+                  </button>
+                </div>
+
+                {/* Opción 1: Primera canción */}
+                {coverType === 'first-track' && (
+                  <div className="p-3 bg-zinc-900/60 border border-zinc-800/80 rounded-xl flex items-center gap-3">
+                    {firstSelectedTrack ? (
+                      <>
+                        <img
+                          src={firstSelectedTrack.coverUrl}
+                          alt={firstSelectedTrack.title}
+                          className="w-12 h-12 rounded-lg object-cover border border-zinc-700"
+                        />
+                        <div className="truncate">
+                          <p className="text-xs font-semibold text-white truncate">{firstSelectedTrack.title}</p>
+                          <p className="text-[11px] text-green-400">Esta carátula será la portada del álbum</p>
+                        </div>
+                      </>
+                    ) : (
+                      <p className="text-xs text-zinc-500">
+                        Selecciona al menos una canción abajo para usar su portada automáticamente.
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* Opción 2: URL personalizada */}
+                {coverType === 'custom-url' && (
+                  <div className="space-y-2">
+                    <input
+                      type="url"
+                      value={customCoverUrl}
+                      onChange={(e) => setCustomCoverUrl(e.target.value)}
+                      placeholder="https://images.unsplash.com/..."
+                      className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-green-500 transition"
+                    />
+                    {customCoverUrl && (
+                      <div className="w-14 h-14 rounded-lg overflow-hidden border border-zinc-800 bg-zinc-900">
+                        <img src={customCoverUrl} alt="Vista previa" className="w-full h-full object-cover" />
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Opción 3: Las 6 portadas genéricas */}
+                {coverType === 'generic' && (
+                  <div className="grid grid-cols-6 gap-2 pt-1">
+                    {GENERIC_COVERS.map((cov, idx) => {
+                      const isSelected = selectedGenericCover === cov;
+                      return (
+                        <div
+                          key={idx}
+                          onClick={() => setSelectedGenericCover(cov)}
+                          className={`aspect-square rounded-lg overflow-hidden border-2 cursor-pointer transition transform hover:scale-105 relative ${
+                            isSelected ? 'border-green-500 shadow-lg' : 'border-transparent opacity-60 hover:opacity-100'
+                          }`}
+                        >
+                          <img src={cov} alt={`Opción ${idx + 1}`} className="w-full h-full object-cover" />
+                          {isSelected && (
+                            <div className="absolute inset-0 bg-green-500/20 flex items-center justify-center">
+                              <Check size={14} className="text-white drop-shadow" />
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
 
               {/* Selector de Canciones */}
@@ -372,7 +499,7 @@ export default function AlbumsPage() {
                             : availableTracks.map((t) => t.id)
                         )
                       }
-                      className="text-[11px] text-zinc-400 hover:text-green-400 transition"
+                      className="text-[11px] text-zinc-400 hover:text-green-400 transition cursor-pointer"
                     >
                       {selectedTrackIds.length === availableTracks.length ? 'Deseleccionar todas' : 'Marcar todas'}
                     </button>
