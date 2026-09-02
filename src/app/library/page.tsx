@@ -23,7 +23,8 @@ import {
   Heart,
   Radio as RadioIcon,
   Globe,
-  UploadCloud
+  UploadCloud,
+  Headphones
 } from 'lucide-react';
 
 interface RadioStation {
@@ -110,13 +111,44 @@ export default function LibraryPage() {
     async function loadLibraryData() {
       try {
         // 1. Cargar Canciones desde la API
+        let allTracks: Track[] = [];
         const res = await fetch('/api/tracks');
         if (res.ok) {
           const data: Track[] = await res.json();
-          if (Array.isArray(data)) setTracks(data);
+          if (Array.isArray(data)) allTracks = data;
         }
 
-        // 2. Cargar Álbumes personalizados de localStorage
+        // 2. Combinar con sesiones grabadas de DJ en localStorage (rokola_dj_recordings y rokola_custom_tracks)
+        let localCustomTracks: Track[] = [];
+        const savedMixes = localStorage.getItem('rokola_dj_recordings');
+        if (savedMixes) {
+          try {
+            const parsed = JSON.parse(savedMixes);
+            if (Array.isArray(parsed)) localCustomTracks = [...localCustomTracks, ...parsed];
+          } catch (e) {}
+        }
+
+        const savedCustom = localStorage.getItem('rokola_custom_tracks');
+        if (savedCustom) {
+          try {
+            const parsed = JSON.parse(savedCustom);
+            if (Array.isArray(parsed)) localCustomTracks = [...localCustomTracks, ...parsed];
+          } catch (e) {}
+        }
+
+        // Evitar duplicados por ID y anteponer grabaciones a la lista
+        const existingIds = new Set(allTracks.map((t) => t.id));
+        const uniqueCustom: Track[] = [];
+        for (const t of localCustomTracks) {
+          if (!existingIds.has(t.id)) {
+            existingIds.add(t.id);
+            uniqueCustom.push(t);
+          }
+        }
+
+        setTracks([...uniqueCustom, ...allTracks]);
+
+        // 3. Cargar Álbumes personalizados de localStorage
         const savedAlbums = localStorage.getItem('rokola_custom_albums');
         if (savedAlbums) {
           try {
@@ -129,7 +161,7 @@ export default function LibraryPage() {
           }
         }
 
-        // 3. Cargar Playlists de localStorage
+        // 4. Cargar Playlists de localStorage
         const savedPlaylists = localStorage.getItem('rokola_custom_playlists');
         if (savedPlaylists) {
           try {
@@ -142,15 +174,15 @@ export default function LibraryPage() {
           }
         }
 
-        // 4. Favoritas Locales (IDs)
+        // 5. Favoritas Locales (IDs)
         const savedFavLocal = localStorage.getItem('rokola_favs_local_ids');
         if (savedFavLocal) setFavLocalTrackIds(JSON.parse(savedFavLocal));
 
-        // 5. Favoritas de Explorar (Objetos Track)
+        // 6. Favoritas de Explorar (Objetos Track)
         const savedFavExplore = localStorage.getItem('rokola_favs_explore');
         if (savedFavExplore) setFavExploreTracks(JSON.parse(savedFavExplore));
 
-        // 6. Favoritas de Radio
+        // 7. Favoritas de Radio
         const savedFavRadio = localStorage.getItem('rokola_favs_radio');
         if (savedFavRadio) {
           setFavRadioStations(JSON.parse(savedFavRadio));
@@ -184,7 +216,7 @@ export default function LibraryPage() {
     loadLibraryData();
   }, []);
 
-  // Alternar favorito de música subida local
+  // Alternar favorito de música subida local o grabaciones
   const toggleFavLocal = (e: React.MouseEvent, trackId: string) => {
     e.stopPropagation();
     let updated: string[];
@@ -227,18 +259,42 @@ export default function LibraryPage() {
     setTrack(radioTrack);
   };
 
-  // Eliminar canción del servidor
+  // Eliminar canción (tanto del servidor como grabaciones locales)
   const handleDeleteTrack = async (e: React.MouseEvent, trackId: string, trackTitle: string) => {
     e.stopPropagation();
-    const confirmed = window.confirm(`¿Seguro que deseas eliminar "${trackTitle}" del servidor?`);
+    const confirmed = window.confirm(`¿Seguro que deseas eliminar "${trackTitle}"?`);
     if (!confirmed) return;
 
     try {
       setDeletingTrackId(trackId);
+
+      // Si es una grabación de DJ / mezcla guardada localmente
+      if (trackId.startsWith('mix-')) {
+        const savedMixes = localStorage.getItem('rokola_dj_recordings');
+        if (savedMixes) {
+          const parsed = JSON.parse(savedMixes).filter((t: Track) => t.id !== trackId);
+          localStorage.setItem('rokola_dj_recordings', JSON.stringify(parsed));
+        }
+
+        const savedCustom = localStorage.getItem('rokola_custom_tracks');
+        if (savedCustom) {
+          const parsed = JSON.parse(savedCustom).filter((t: Track) => t.id !== trackId);
+          localStorage.setItem('rokola_custom_tracks', JSON.stringify(parsed));
+        }
+
+        setTracks((prev) => prev.filter((t) => t.id !== trackId));
+        setFavLocalTrackIds((prev) => {
+          const updated = prev.filter((id) => id !== trackId);
+          localStorage.setItem('rokola_favs_local_ids', JSON.stringify(updated));
+          return updated;
+        });
+        return;
+      }
+
+      // Si es una canción subida al backend
       const res = await fetch(`/api/tracks/${trackId}`, { method: 'DELETE' });
       if (res.ok) {
         setTracks((prev) => prev.filter((t) => t.id !== trackId));
-        // Si estaba en favoritos locales, se quita también
         setFavLocalTrackIds((prev) => {
           const updated = prev.filter((id) => id !== trackId);
           localStorage.setItem('rokola_favs_local_ids', JSON.stringify(updated));
@@ -346,7 +402,7 @@ export default function LibraryPage() {
     return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
   };
 
-  // Filtros de búsqueda reactivos
+  // Filtros de búsqueda
   const filteredTracks = tracks.filter(
     (t) =>
       t.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -386,7 +442,7 @@ export default function LibraryPage() {
             Tu Biblioteca
           </h1>
           <p className="text-zinc-400 text-sm mt-1">
-            Gestiona tus canciones favoritas, música subida, álbumes y playlists
+            Gestiona tus canciones favoritas, música subida, grabaciones de DJ, álbumes y playlists
           </p>
         </div>
 
@@ -524,7 +580,14 @@ export default function LibraryPage() {
                             <p className={`font-semibold truncate ${isThisPlaying ? 'text-green-400' : 'text-white'}`}>
                               {track.title}
                             </p>
-                            <p className="text-xs text-zinc-400 truncate">{track.artist}</p>
+                            <p className="text-xs text-zinc-400 truncate flex items-center gap-1.5 mt-0.5">
+                              <span>{track.artist}</span>
+                              {track.id.startsWith('mix-') && (
+                                <span className="px-1.5 py-0.5 bg-green-500/10 text-green-400 text-[10px] font-mono rounded border border-green-500/30">
+                                  DJ Set
+                                </span>
+                              )}
+                            </p>
                           </div>
                         </div>
                         <div className="col-span-3 flex items-center justify-end gap-3">
@@ -664,7 +727,7 @@ export default function LibraryPage() {
         </div>
       )}
 
-      {/* 4. Banner Reproductor de Mis Canciones Subidas */}
+      {/* 4. Banner Reproductor de Mis Canciones Subidas y Sesiones */}
       {tracks.length > 0 && (filter === 'all' || filter === 'songs') && (
         <section>
           <div
@@ -676,9 +739,9 @@ export default function LibraryPage() {
                 <Disc3 size={18} className="animate-spin" />
                 <span>Colección Activa</span>
               </div>
-              <h2 className="text-2xl md:text-3xl font-extrabold text-white">Mis Canciones Almacenadas</h2>
+              <h2 className="text-2xl md:text-3xl font-extrabold text-white">Mis Canciones y Sesiones DJ</h2>
               <p className="text-zinc-300 text-sm">
-                {tracks.length} canciones listas para reproducir en secuencia
+                {tracks.length} pistas listas para reproducir en secuencia
               </p>
             </div>
 
@@ -726,6 +789,7 @@ export default function LibraryPage() {
                     const isThisPlaying = currentTrack?.id === track.id && isPlaying;
                     const isDeleting = deletingTrackId === track.id;
                     const isFav = favLocalTrackIds.includes(track.id);
+                    const isDjMix = track.id.startsWith('mix-');
 
                     return (
                       <div
@@ -750,7 +814,15 @@ export default function LibraryPage() {
                             <p className={`font-semibold truncate ${isThisPlaying ? 'text-green-400' : 'text-white'}`}>
                               {track.title}
                             </p>
-                            <p className="text-xs text-zinc-400 truncate mt-0.5">{track.artist}</p>
+                            <p className="text-xs text-zinc-400 truncate mt-0.5 flex items-center gap-2">
+                              <span>{track.artist}</span>
+                              {isDjMix && (
+                                <span className="px-1.5 py-0.5 bg-green-500/10 text-green-400 text-[10px] font-mono rounded border border-green-500/30 flex items-center gap-1">
+                                  <Headphones size={10} />
+                                  <span>DJ Set</span>
+                                </span>
+                              )}
+                            </p>
                           </div>
                         </div>
 
@@ -772,7 +844,7 @@ export default function LibraryPage() {
                             onClick={(e) => handleDeleteTrack(e, track.id, track.title)}
                             disabled={isDeleting}
                             className="p-1.5 text-zinc-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition cursor-pointer disabled:opacity-50"
-                            title="Eliminar del servidor"
+                            title="Eliminar canción"
                           >
                             {isDeleting ? (
                               <Loader2 size={16} className="animate-spin text-red-400" />
@@ -791,6 +863,7 @@ export default function LibraryPage() {
                     const isThisPlaying = currentTrack?.id === track.id && isPlaying;
                     const isDeleting = deletingTrackId === track.id;
                     const isFav = favLocalTrackIds.includes(track.id);
+                    const isDjMix = track.id.startsWith('mix-');
 
                     return (
                       <div
@@ -836,7 +909,14 @@ export default function LibraryPage() {
                           <h4 className={`font-semibold text-xs truncate ${isThisPlaying ? 'text-green-400' : 'text-white'}`}>
                             {track.title}
                           </h4>
-                          <p className="text-[11px] text-zinc-400 truncate mt-0.5">{track.artist}</p>
+                          <p className="text-[11px] text-zinc-400 truncate mt-0.5 flex items-center gap-1">
+                            <span>{track.artist}</span>
+                            {isDjMix && (
+                              <span className="px-1 py-0.2 bg-green-500/10 text-green-400 text-[9px] font-mono rounded border border-green-500/30">
+                                DJ
+                              </span>
+                            )}
+                          </p>
                         </div>
                       </div>
                     );
