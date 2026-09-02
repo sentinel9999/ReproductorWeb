@@ -19,87 +19,66 @@ import {
   Loader2
 } from 'lucide-react';
 
-// 1. Categorías y Géneros con paletas de colores
+// Categorías y Géneros para búsqueda rápida
 const GENRES = [
-  { id: 'g1', name: 'Pop & Éxitos', color: 'from-pink-600 to-rose-900', icon: Sparkles },
-  { id: 'g2', name: 'Rock & Alternativo', color: 'from-red-600 to-orange-950', icon: Disc },
-  { id: 'g3', name: 'Electrónica & Dance', color: 'from-cyan-500 to-blue-900', icon: Headphones },
-  { id: 'g4', name: 'Hip Hop & Trap', color: 'from-amber-500 to-yellow-900', icon: Flame },
-  { id: 'g5', name: 'Lo-Fi & Chill', color: 'from-purple-600 to-indigo-950', icon: Music },
-  { id: 'g6', name: 'Acústico & Folk', color: 'from-emerald-500 to-teal-950', icon: Radio },
-  { id: 'g7', name: 'Jazz & Blues', color: 'from-amber-700 to-stone-900', icon: Mic2 },
-  { id: 'g8', name: 'Latino & Reggaeton', color: 'from-orange-500 to-red-900', icon: Flame },
+  { id: 'g1', name: 'Pop & Éxitos', query: 'Pop', color: 'from-pink-600 to-rose-900', icon: Sparkles },
+  { id: 'g2', name: 'Rock & Alternativo', query: 'Rock', color: 'from-red-600 to-orange-950', icon: Disc },
+  { id: 'g3', name: 'Electrónica & Dance', query: 'Dance', color: 'from-cyan-500 to-blue-900', icon: Headphones },
+  { id: 'g4', name: 'Hip Hop & Trap', query: 'Hip Hop', color: 'from-amber-500 to-yellow-900', icon: Flame },
+  { id: 'g5', name: 'Lo-Fi & Chill', query: 'Lo-Fi', color: 'from-purple-600 to-indigo-950', icon: Music },
+  { id: 'g6', name: 'Acústico & Folk', query: 'Acoustic', color: 'from-emerald-500 to-teal-950', icon: Radio },
+  { id: 'g7', name: 'Jazz & Blues', query: 'Jazz', color: 'from-amber-700 to-stone-900', icon: Mic2 },
+  { id: 'g8', name: 'Latino & Reggaeton', query: 'Latino', color: 'from-orange-500 to-red-900', icon: Flame },
 ];
 
-// 2. Catálogo global para búsqueda
-const ALL_CATALOG_TRACKS: Track[] = [
-  {
-    id: '1',
-    title: 'Acoustic Breeze',
-    artist: 'Benjamin Tissot',
-    album: 'Acoustic Memories',
-    duration: 100,
-    coverUrl: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300&h=300&fit=crop',
-    audioUrl: 'https://cdn.pixabay.com/download/audio/2022/01/18/audio_d0a13f69d2.mp3',
-  },
-  {
-    id: '2',
-    title: 'Sunny Beats',
-    artist: 'Bensound',
-    album: 'Summer Nights',
-    duration: 140,
-    coverUrl: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=300&h=300&fit=crop',
-    audioUrl: 'https://cdn.pixabay.com/download/audio/2021/08/04/audio_0625c1539c.mp3',
-  },
-  {
-    id: '3',
-    title: 'Energy Pulse',
-    artist: 'Electronic Waves',
-    album: 'Neon Nights',
-    duration: 179,
-    coverUrl: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop',
-    audioUrl: 'https://cdn.pixabay.com/download/audio/2022/10/14/audio_9939f792cb.mp3',
-  },
-  {
-    id: '4',
-    title: 'Slow Motion',
-    artist: 'Chillout Lab',
-    album: 'Acoustic Memories',
-    duration: 205,
-    coverUrl: 'https://images.unsplash.com/photo-1459749411175-04bf5292ceea?w=300&h=300&fit=crop',
-    audioUrl: 'https://cdn.pixabay.com/download/audio/2022/03/15/audio_c8c8a73467.mp3',
-  },
-];
-
-// Componente interno que maneja la lógica y lee useSearchParams
 function ExploreContent() {
   const searchParams = useSearchParams();
   const initialQuery = searchParams.get('q') || '';
   
   const [searchQuery, setSearchQuery] = useState(initialQuery);
   const [selectedGenre, setSelectedGenre] = useState<string | null>(null);
+  const [searchResults, setSearchResults] = useState<Track[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
 
   const { currentTrack, isPlaying, setQueue } = usePlayerStore();
 
+  // Sincroniza el valor si viene desde el input del Sidebar (?q=...)
   useEffect(() => {
     setSearchQuery(initialQuery);
   }, [initialQuery]);
+
+  // Consulta al backend con debounce para evitar llamadas excesivas
+  useEffect(() => {
+    const term = searchQuery.trim();
+    if (!term) {
+      setSearchResults([]);
+      setIsSearching(false);
+      return;
+    }
+
+    setIsSearching(true);
+    const debounceTimer = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/search?q=${encodeURIComponent(term)}`);
+        if (res.ok) {
+          const data = await res.json();
+          setSearchResults(Array.isArray(data) ? data : []);
+        }
+      } catch (error) {
+        console.error('Error buscando canciones en la API:', error);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 400);
+
+    return () => clearTimeout(debounceTimer);
+  }, [searchQuery]);
 
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
     return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
   };
-
-  // Filtrado reactivo por término de búsqueda
-  const searchResults = ALL_CATALOG_TRACKS.filter((track) => {
-    const query = searchQuery.toLowerCase();
-    return (
-      track.title.toLowerCase().includes(query) ||
-      track.artist.toLowerCase().includes(query) ||
-      (track.album && track.album.toLowerCase().includes(query))
-    );
-  });
 
   return (
     <div className="p-6 md:p-10 max-w-7xl mx-auto space-y-10 pb-24">
@@ -120,22 +99,40 @@ function ExploreContent() {
         <input
           type="text"
           value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="¿Qué quieres escuchar? Canciones, artistas, géneros..."
-          className="w-full bg-zinc-900 border border-zinc-800 rounded-full pl-11 pr-4 py-3 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-green-500 transition shadow-inner"
+          onChange={(e) => {
+            setSearchQuery(e.target.value);
+            setSelectedGenre(null);
+          }}
+          placeholder="¿Qué quieres escuchar? Canciones, artistas, álbumes..."
+          className="w-full bg-zinc-900 border border-zinc-800 rounded-full pl-11 pr-10 py-3 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-green-500 transition shadow-inner"
         />
+        {isSearching && (
+          <Loader2 size={18} className="animate-spin text-green-400 absolute right-4 top-1/2 -translate-y-1/2" />
+        )}
       </div>
 
       {/* 3. Resultados de Búsqueda */}
       {searchQuery.trim() !== '' && (
         <section className="space-y-4">
-          <h2 className="text-xl font-bold text-white">
-            Resultados para &quot;{searchQuery}&quot; ({searchResults.length})
-          </h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-bold text-white">
+              Resultados para &quot;{searchQuery}&quot;
+            </h2>
+            {!isSearching && (
+              <span className="text-xs text-zinc-400">
+                {searchResults.length} {searchResults.length === 1 ? 'canción encontrada' : 'canciones encontradas'}
+              </span>
+            )}
+          </div>
 
-          {searchResults.length === 0 ? (
-            <div className="p-8 border border-dashed border-zinc-800 rounded-xl text-center text-zinc-500 text-sm">
-              No se encontraron coincidencias para &quot;{searchQuery}&quot;. Prueba con otro término.
+          {isSearching ? (
+            <div className="p-12 border border-zinc-800/60 rounded-2xl flex flex-col items-center justify-center gap-3 text-zinc-400 bg-zinc-900/20">
+              <Loader2 className="animate-spin text-green-500" size={28} />
+              <p className="text-sm">Consultando catálogo musical...</p>
+            </div>
+          ) : searchResults.length === 0 ? (
+            <div className="p-8 border border-dashed border-zinc-800 rounded-2xl text-center text-zinc-500 text-sm">
+              No se encontraron coincidencias para &quot;{searchQuery}&quot;. Intenta con otro término o artista.
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -149,25 +146,29 @@ function ExploreContent() {
                   >
                     <div className="flex items-center gap-3 min-w-0">
                       <img
-                        src={track.coverUrl}
+                        src={track.coverUrl || 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300&h=300&fit=crop'}
                         alt={track.title}
-                        className="w-12 h-12 rounded-lg object-cover flex-shrink-0"
+                        className="w-12 h-12 rounded-lg object-cover flex-shrink-0 bg-zinc-800"
                       />
                       <div className="truncate">
                         <h3 className={`font-semibold text-sm truncate ${isThisTrackPlaying ? 'text-green-400' : 'text-white'}`}>
                           {track.title}
                         </h3>
-                        <p className="text-xs text-zinc-400 truncate">{track.artist}</p>
+                        <p className="text-xs text-zinc-400 truncate">
+                          {track.artist} {track.album ? `• ${track.album}` : ''}
+                        </p>
                       </div>
                     </div>
 
                     <div className="flex items-center gap-3 flex-shrink-0">
-                      <span className="text-xs text-zinc-500 hidden sm:inline">
-                        {formatDuration(track.duration)}
-                      </span>
+                      {track.duration > 0 && (
+                        <span className="text-xs text-zinc-500 hidden sm:inline">
+                          {formatDuration(track.duration)}
+                        </span>
+                      )}
                       <button
                         onClick={() => setQueue(searchResults, index)}
-                        className={`w-9 h-9 bg-green-500 rounded-full flex items-center justify-center text-black shadow-md transition transform group-hover:scale-100 ${
+                        className={`w-9 h-9 bg-green-500 rounded-full flex items-center justify-center text-black shadow-md transition transform group-hover:scale-100 cursor-pointer ${
                           isThisTrackPlaying ? 'opacity-100 scale-100' : 'opacity-0 group-hover:opacity-100 scale-90'
                         }`}
                         aria-label="Reproducir"
@@ -189,7 +190,7 @@ function ExploreContent() {
 
       {/* 4. Géneros */}
       <section className="space-y-4">
-        <h2 className="text-xl font-bold text-white">Explorar Todo por Género</h2>
+        <h2 className="text-xl font-bold text-white">Explorar por Género</h2>
 
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
           {GENRES.map((genre) => {
@@ -200,8 +201,13 @@ function ExploreContent() {
               <div
                 key={genre.id}
                 onClick={() => {
-                  setSelectedGenre(isSelected ? null : genre.id);
-                  setSearchQuery(isSelected ? '' : genre.name.split('&')[0].trim());
+                  if (isSelected) {
+                    setSelectedGenre(null);
+                    setSearchQuery('');
+                  } else {
+                    setSelectedGenre(genre.id);
+                    setSearchQuery(genre.query);
+                  }
                 }}
                 className={`relative overflow-hidden h-32 rounded-2xl bg-gradient-to-br ${genre.color} p-4 flex flex-col justify-between cursor-pointer border transition transform hover:scale-[1.02] shadow-lg group ${
                   isSelected ? 'border-white ring-2 ring-white/50' : 'border-white/10 hover:border-white/30'
@@ -224,7 +230,6 @@ function ExploreContent() {
   );
 }
 
-// Exportación por defecto envuelta en Suspense
 export default function ExplorePage() {
   return (
     <Suspense
