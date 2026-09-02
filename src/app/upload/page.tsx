@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { upload } from '@vercel/blob/client';
 import { usePlayerStore } from '@/store/usePlaystore';
 import { Track } from '@/types/rokola';
 import { UploadCloud, Music, Image as ImageIcon, Play, CheckCircle2, Loader2, ArrowLeft } from 'lucide-react';
@@ -42,23 +43,30 @@ export default function UploadTrackPage() {
     try {
       setIsUploading(true);
 
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('title', title);
-      formData.append('artist', artist || 'Artista Desconocido');
-      if (coverUrl) formData.append('coverUrl', coverUrl);
-
-      const response = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData,
+      // 1. Subir archivo de audio directamente a Vercel Blob desde el cliente (Bypassea el límite de 4.5MB)
+      const newBlob = await upload(`tracks/${Date.now()}-${file.name}`, file, {
+        access: 'public',
+        handleUploadUrl: '/api/upload',
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Error subiendo la canción');
-      }
+      // 2. Construir el objeto Track con la URL permanente en la nube
+      const finalCover = coverUrl.trim() || 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=400&h=400&fit=crop';
+      
+      const newTrack: Track = {
+        id: `blob-${Date.now()}`,
+        title: title.trim(),
+        artist: artist.trim() || 'Artista Desconocido',
+        album: 'Subidas a la Nube',
+        duration: 180,
+        coverUrl: finalCover,
+        audioUrl: newBlob.url,
+      };
 
-      const newTrack: Track = await response.json();
+      // 3. Guardar en localStorage para persistencia inmediata en la biblioteca
+      const existing = localStorage.getItem('rokola_custom_tracks');
+      const tracks: Track[] = existing ? JSON.parse(existing) : [];
+      localStorage.setItem('rokola_custom_tracks', JSON.stringify([newTrack, ...tracks]));
+
       setUploadedTrack(newTrack);
 
       // Limpiar formulario
@@ -67,7 +75,8 @@ export default function UploadTrackPage() {
       setArtist('');
       setCoverUrl('');
     } catch (err: any) {
-      setErrorMsg(err.message || 'Ocurrió un error al subir el audio.');
+      console.error('Error detallado de subida:', err);
+      setErrorMsg(err.message || 'Ocurrió un error al subir el audio a la nube.');
     } finally {
       setIsUploading(false);
     }
@@ -88,10 +97,10 @@ export default function UploadTrackPage() {
       <div className="space-y-1">
         <h1 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight flex items-center gap-3">
           <UploadCloud className="text-green-400" size={36} />
-          <span>Subir Música</span>
+          <span>Subir Música a la Nube</span>
         </h1>
         <p className="text-zinc-400 text-sm">
-          Añade tus propios archivos de audio MP3 para reproducirlos en streaming directo.
+          Añade tus propios archivos de audio MP3 para reproducirlos en streaming directo desde Vercel Blob.
         </p>
       </div>
 
@@ -177,7 +186,7 @@ export default function UploadTrackPage() {
             {isUploading ? (
               <>
                 <Loader2 size={18} className="animate-spin" />
-                <span>Subiendo y procesando audio...</span>
+                <span>Subiendo archivo a Vercel Blob...</span>
               </>
             ) : (
               <>
