@@ -5,57 +5,69 @@ import { usePlayerStore } from '@/store/usePlaystore';
 
 export default function AudioEngine() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const { currentTrack, isPlaying, volume, setCurrentTime, setDuration, nextTrack, currentTime } = usePlayerStore();
+  const { currentTrack, isPlaying, volume, setCurrentTime, setDuration, nextTrack } = usePlayerStore();
 
+  // Cambio de pista
   useEffect(() => {
-    if (!audioRef.current) return;
-    if (currentTrack) {
-      audioRef.current.src = currentTrack.audioUrl;
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    if (!currentTrack?.audioUrl) {
+      audio.pause();
+      audio.removeAttribute('src');
+      return;
+    }
+
+    if (audio.src !== currentTrack.audioUrl) {
+      audio.src = currentTrack.audioUrl;
+      audio.load();
+
       if (isPlaying) {
-        audioRef.current.play().catch((e) => console.error("Error al reproducir audio:", e));
+        audio.play().catch((err) => {
+          if (err.name !== 'AbortError') {
+            console.warn('Buffer en espera:', err.message);
+          }
+        });
       }
     }
   }, [currentTrack]);
 
+  // Play / Pause
   useEffect(() => {
-    if (!audioRef.current) return;
+    const audio = audioRef.current;
+    if (!audio || !currentTrack?.audioUrl) return;
+
     if (isPlaying) {
-      audioRef.current.play().catch((e) => console.error("Error al reanudar audio:", e));
+      audio.play().catch((err) => {
+        if (err.name !== 'AbortError') {
+          console.warn('Esperando interacción:', err.message);
+        }
+      });
     } else {
-      audioRef.current.pause();
+      audio.pause();
     }
   }, [isPlaying]);
 
+  // Volumen
   useEffect(() => {
-    if (!audioRef.current) return;
-    audioRef.current.volume = volume;
+    if (audioRef.current) {
+      audioRef.current.volume = volume;
+    }
   }, [volume]);
 
-  // 👈 ESTE EFECTO PERMITE QUE EL SALTO DE TIEMPO (SEEK) AFECTE AL AUDIO REAL
-  useEffect(() => {
-    if (!audioRef.current) return;
-    // Si la diferencia entre el estado de Zustand y el audio real es mayor a 1 segundo, actualizamos el elemento audio
-    if (Math.abs(audioRef.current.currentTime - currentTime) > 1) {
-      audioRef.current.currentTime = currentTime;
-    }
-  }, [currentTime]);
+  if (!currentTrack?.audioUrl) return null;
 
   return (
     <audio
       ref={audioRef}
-      onTimeUpdate={() => {
-        if (audioRef.current) {
-          setCurrentTime(audioRef.current.currentTime);
+      preload="auto"
+      onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime)}
+      onLoadedMetadata={(e) => {
+        if (!isNaN(e.currentTarget.duration)) {
+          setDuration(e.currentTarget.duration);
         }
       }}
-      onLoadedMetadata={() => {
-        if (audioRef.current) {
-          setDuration(audioRef.current.duration);
-        }
-      }}
-      onEnded={() => {
-        nextTrack();
-      }}
+      onEnded={nextTrack}
     />
   );
 }
