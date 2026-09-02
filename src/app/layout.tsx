@@ -2,6 +2,7 @@ import './globals.css';
 import AudioEngine from '@/components/AudioEngine';
 import PlayerBar from '@/components/PlayerBar';
 import Sidebar from '@/components/Sidebar';
+import { Analytics } from '@vercel/analytics/next'; // 👈 1. Importa Analytics
 
 export const metadata = {
   title: 'Rokola Web Player',
@@ -20,6 +21,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </div>
         <AudioEngine />
         <PlayerBar />
+        <Analytics /> {/* 👈 2. Añade el componente aquí */}
       </body>
     </html>
   );
