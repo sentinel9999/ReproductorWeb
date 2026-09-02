@@ -3,7 +3,7 @@
 import { Suspense, useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { usePlayerStore } from '@/store/usePlaystore';
-import { Track } from '@/types/rokola';
+import { Track, Playlist } from '@/types/rokola';
 import { 
   Compass, 
   Search, 
@@ -16,10 +16,15 @@ import {
   Disc, 
   Mic2, 
   Headphones,
-  Loader2
+  Loader2,
+  ListPlus,
+  Heart,
+  History,
+  X,
+  Check,
+  Plus
 } from 'lucide-react';
 
-// Categorías y Géneros para búsqueda rápida
 const GENRES = [
   { id: 'g1', name: 'Pop & Éxitos', query: 'Pop', color: 'from-pink-600 to-rose-900', icon: Sparkles },
   { id: 'g2', name: 'Rock & Alternativo', query: 'Rock', color: 'from-red-600 to-orange-950', icon: Disc },
@@ -40,14 +45,78 @@ function ExploreContent() {
   const [searchResults, setSearchResults] = useState<Track[]>([]);
   const [isSearching, setIsSearching] = useState(false);
 
+  // Historial de búsquedas
+  const [recentSearches, setRecentSearches] = useState<string[]>([]);
+
+  // Favoritos de Explorar
+  const [favoriteTrackIds, setFavoriteTrackIds] = useState<string[]>([]);
+
+  // Modal para añadir a playlist
+  const [targetTrack, setTargetTrack] = useState<Track | null>(null);
+  const [userPlaylists, setUserPlaylists] = useState<Playlist[]>([]);
+  const [newPlaylistName, setNewPlaylistName] = useState('');
+  const [feedbackMessage, setFeedbackMessage] = useState<string | null>(null);
+
   const { currentTrack, isPlaying, setQueue } = usePlayerStore();
 
-  // Sincroniza el valor si viene desde el input del Sidebar (?q=...)
+  // Cargar datos locales al montar
+  useEffect(() => {
+    const savedHistory = localStorage.getItem('rokola_recent_searches');
+    if (savedHistory) {
+      try {
+        setRecentSearches(JSON.parse(savedHistory));
+      } catch (e) {}
+    }
+
+    const savedFavs = localStorage.getItem('rokola_favs_explore');
+    if (savedFavs) {
+      try {
+        const parsed: Track[] = JSON.parse(savedFavs);
+        setFavoriteTrackIds(parsed.map((t) => t.id));
+      } catch (e) {}
+    }
+
+    loadPlaylists();
+  }, []);
+
+  const loadPlaylists = () => {
+    const savedPlaylists = localStorage.getItem('rokola_custom_playlists');
+    if (savedPlaylists) {
+      try {
+        setUserPlaylists(JSON.parse(savedPlaylists));
+      } catch (e) {}
+    }
+  };
+
   useEffect(() => {
     setSearchQuery(initialQuery);
   }, [initialQuery]);
 
-  // Consulta al backend con debounce para evitar llamadas continuas
+  // Guardar en el historial de búsquedas
+  const saveToHistory = (term: string) => {
+    const trimmed = term.trim();
+    if (!trimmed) return;
+    setRecentSearches((prev) => {
+      const filtered = prev.filter((item) => item.toLowerCase() !== trimmed.toLowerCase());
+      const updated = [trimmed, ...filtered].slice(0, 8);
+      localStorage.setItem('rokola_recent_searches', JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  const removeHistoryItem = (e: React.MouseEvent, item: string) => {
+    e.stopPropagation();
+    const updated = recentSearches.filter((t) => t !== item);
+    setRecentSearches(updated);
+    localStorage.setItem('rokola_recent_searches', JSON.stringify(updated));
+  };
+
+  const clearHistory = () => {
+    setRecentSearches([]);
+    localStorage.removeItem('rokola_recent_searches');
+  };
+
+  // Consulta al backend
   useEffect(() => {
     const term = searchQuery.trim();
     if (!term) {
@@ -63,9 +132,10 @@ function ExploreContent() {
         if (res.ok) {
           const data = await res.json();
           setSearchResults(Array.isArray(data) ? data : []);
+          saveToHistory(term);
         }
       } catch (error) {
-        console.error('Error buscando canciones en la API:', error);
+        console.error('Error buscando canciones:', error);
       } finally {
         setIsSearching(false);
       }
@@ -74,6 +144,80 @@ function ExploreContent() {
     return () => clearTimeout(debounceTimer);
   }, [searchQuery]);
 
+  // Manejar Favoritas de Explorar
+  const toggleFavorite = (e: React.MouseEvent, track: Track) => {
+    e.stopPropagation();
+    const saved = localStorage.getItem('rokola_favs_explore');
+    let currentFavs: Track[] = saved ? JSON.parse(saved) : [];
+
+    const exists = currentFavs.some((t) => t.id === track.id);
+    if (exists) {
+      currentFavs = currentFavs.filter((t) => t.id !== track.id);
+      setFavoriteTrackIds((prev) => prev.filter((id) => id !== track.id));
+    } else {
+      currentFavs = [track, ...currentFavs];
+      setFavoriteTrackIds((prev) => [...prev, track.id]);
+    }
+
+    localStorage.setItem('rokola_favs_explore', JSON.stringify(currentFavs));
+  };
+
+  // Añadir canción a una playlist existente
+  const addTrackToPlaylist = (playlistId: string) => {
+    if (!targetTrack) return;
+
+    const savedPlaylists = localStorage.getItem('rokola_custom_playlists');
+    let playlists: Playlist[] = savedPlaylists ? JSON.parse(savedPlaylists) : [];
+
+    playlists = playlists.map((pl) => {
+      if (pl.id === playlistId) {
+        const exists = pl.tracks?.some((t) => t.id === targetTrack.id);
+        const updatedTracks = exists ? pl.tracks : [...(pl.tracks || []), targetTrack];
+        return {
+          ...pl,
+          tracks: updatedTracks,
+          coverUrl: pl.coverUrl || targetTrack.coverUrl,
+        };
+      }
+      return pl;
+    });
+
+    localStorage.setItem('rokola_custom_playlists', JSON.stringify(playlists));
+    setUserPlaylists(playlists);
+    setFeedbackMessage('¡Canción añadida a la playlist!');
+    setTimeout(() => {
+      setFeedbackMessage(null);
+      setTargetTrack(null);
+    }, 1200);
+  };
+
+  // Crear playlist rápida y asignar la canción
+  const handleCreateAndAdd = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPlaylistName.trim() || !targetTrack) return;
+
+    const newPl: Playlist = {
+      id: `pl-${Date.now()}`,
+      name: newPlaylistName.trim(),
+      description: 'Creada desde el buscador',
+      coverUrl: targetTrack.coverUrl,
+      tracks: [targetTrack],
+    };
+
+    const savedPlaylists = localStorage.getItem('rokola_custom_playlists');
+    const playlists: Playlist[] = savedPlaylists ? JSON.parse(savedPlaylists) : [];
+    const updated = [newPl, ...playlists];
+
+    localStorage.setItem('rokola_custom_playlists', JSON.stringify(updated));
+    setUserPlaylists(updated);
+    setNewPlaylistName('');
+    setFeedbackMessage('¡Playlist creada y canción añadida!');
+    setTimeout(() => {
+      setFeedbackMessage(null);
+      setTargetTrack(null);
+    }, 1200);
+  };
+
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
@@ -81,7 +225,7 @@ function ExploreContent() {
   };
 
   return (
-    <div className="p-6 md:p-10 max-w-7xl mx-auto space-y-10 pb-24">
+    <div className="p-6 md:p-10 max-w-7xl mx-auto space-y-8 pb-24">
       {/* 1. Encabezado */}
       <header className="flex flex-col gap-1">
         <div className="flex items-center gap-2 text-green-400 text-sm font-semibold tracking-wide uppercase">
@@ -94,20 +238,59 @@ function ExploreContent() {
       </header>
 
       {/* 2. Barra de búsqueda */}
-      <div className="relative max-w-xl">
-        <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" />
-        <input
-          type="text"
-          value={searchQuery}
-          onChange={(e) => {
-            setSearchQuery(e.target.value);
-            setSelectedGenre(null);
-          }}
-          placeholder="¿Qué quieres escuchar? Canciones, artistas, álbumes..."
-          className="w-full bg-zinc-900 border border-zinc-800 rounded-full pl-11 pr-10 py-3 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-green-500 transition shadow-inner"
-        />
-        {isSearching && (
-          <Loader2 size={18} className="animate-spin text-green-400 absolute right-4 top-1/2 -translate-y-1/2" />
+      <div className="space-y-3 max-w-2xl">
+        <div className="relative">
+          <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400 pointer-events-none" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setSelectedGenre(null);
+            }}
+            placeholder="¿Qué quieres escuchar? Canciones, artistas, géneros..."
+            className="w-full bg-zinc-900 border border-zinc-800 rounded-full pl-11 pr-10 py-3 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-green-500 transition shadow-inner"
+          />
+          {isSearching && (
+            <Loader2 size={18} className="animate-spin text-green-400 absolute right-4 top-1/2 -translate-y-1/2" />
+          )}
+        </div>
+
+        {/* Sección: Últimas Búsquedas */}
+        {recentSearches.length > 0 && (
+          <div className="space-y-2 pt-1">
+            <div className="flex items-center justify-between text-xs text-zinc-400">
+              <span className="flex items-center gap-1.5 font-medium">
+                <History size={13} className="text-green-400" />
+                <span>Búsquedas recientes</span>
+              </span>
+              <button
+                onClick={clearHistory}
+                className="text-[11px] text-zinc-500 hover:text-red-400 transition"
+              >
+                Borrar historial
+              </button>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              {recentSearches.map((item, idx) => (
+                <div
+                  key={idx}
+                  onClick={() => setSearchQuery(item)}
+                  className="flex items-center gap-2 bg-zinc-900/80 hover:bg-zinc-800 border border-zinc-800/80 text-zinc-300 hover:text-white px-3 py-1.5 rounded-full text-xs cursor-pointer transition group"
+                >
+                  <span>{item}</span>
+                  <button
+                    onClick={(e) => removeHistoryItem(e, item)}
+                    className="text-zinc-500 hover:text-white p-0.5 rounded-full"
+                    title="Eliminar"
+                  >
+                    <X size={12} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
         )}
       </div>
 
@@ -120,7 +303,7 @@ function ExploreContent() {
             </h2>
             {!isSearching && (
               <span className="text-xs text-zinc-400">
-                {searchResults.length} {searchResults.length === 1 ? 'canción encontrada' : 'canciones encontradas'}
+                {searchResults.length} canciones encontradas
               </span>
             )}
           </div>
@@ -128,16 +311,17 @@ function ExploreContent() {
           {isSearching ? (
             <div className="p-12 border border-zinc-800/60 rounded-2xl flex flex-col items-center justify-center gap-3 text-zinc-400 bg-zinc-900/20">
               <Loader2 className="animate-spin text-green-500" size={28} />
-              <p className="text-sm">Consultando catálogo musical...</p>
+              <p className="text-sm">Consultando catálogo...</p>
             </div>
           ) : searchResults.length === 0 ? (
             <div className="p-8 border border-dashed border-zinc-800 rounded-2xl text-center text-zinc-500 text-sm">
-              No se encontraron coincidencias para &quot;{searchQuery}&quot;. Intenta con otro término o artista.
+              No se encontraron canciones para &quot;{searchQuery}&quot;.
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {searchResults.map((track, index) => {
                 const isThisTrackPlaying = currentTrack?.id === track.id && isPlaying;
+                const isFavorite = favoriteTrackIds.includes(track.id);
 
                 return (
                   <div
@@ -161,14 +345,36 @@ function ExploreContent() {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-3 flex-shrink-0">
-                      {track.duration > 0 && (
-                        <span className="text-xs text-zinc-500 hidden sm:inline">
-                          {formatDuration(track.duration)}
-                        </span>
-                      )}
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      {/* Botón Favoritas (Explorar) */}
+                      <button
+                        type="button"
+                        onClick={(e) => toggleFavorite(e, track)}
+                        className={`p-2 rounded-full transition cursor-pointer ${
+                          isFavorite 
+                            ? 'text-red-500 hover:text-red-400' 
+                            : 'text-zinc-500 hover:text-zinc-200'
+                        }`}
+                        title={isFavorite ? 'Quitar de Favoritas' : 'Añadir a Favoritas'}
+                      >
+                        <Heart size={16} fill={isFavorite ? 'currentColor' : 'none'} />
+                      </button>
 
-                      {/* Botón Play: siempre visible en móvil (opacity-100) y solo en hover en escritorio (md:opacity-0) */}
+                      {/* Botón Añadir a Playlist */}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          loadPlaylists();
+                          setTargetTrack(track);
+                        }}
+                        className="p-2 text-zinc-500 hover:text-green-400 hover:bg-zinc-800/80 rounded-full transition cursor-pointer"
+                        title="Añadir a playlist"
+                      >
+                        <ListPlus size={16} />
+                      </button>
+
+                      {/* Botón Play (Siempre visible en móviles, hover en PC) */}
                       <button
                         type="button"
                         onClick={(e) => {
@@ -235,6 +441,92 @@ function ExploreContent() {
           })}
         </div>
       </section>
+
+      {/* MODAL: Añadir a Playlist */}
+      {targetTrack && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-zinc-950 border border-zinc-800 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4 animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
+              <h3 className="text-base font-bold text-white flex items-center gap-2">
+                <ListPlus className="text-green-400" size={18} />
+                <span>Añadir a Playlist</span>
+              </h3>
+              <button
+                onClick={() => setTargetTrack(null)}
+                className="text-zinc-400 hover:text-white p-1 rounded-lg"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Pista destino */}
+            <div className="flex items-center gap-3 p-2 bg-zinc-900 rounded-xl">
+              <img
+                src={targetTrack.coverUrl}
+                alt={targetTrack.title}
+                className="w-10 h-10 rounded-lg object-cover"
+              />
+              <div className="truncate">
+                <p className="text-xs font-semibold text-white truncate">{targetTrack.title}</p>
+                <p className="text-[11px] text-zinc-400 truncate">{targetTrack.artist}</p>
+              </div>
+            </div>
+
+            {feedbackMessage ? (
+              <div className="p-4 bg-green-500/10 border border-green-500/30 rounded-xl text-green-400 text-xs font-semibold flex items-center justify-center gap-2">
+                <Check size={16} />
+                <span>{feedbackMessage}</span>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {/* Listas existentes */}
+                <p className="text-xs font-semibold text-zinc-400">Selecciona una lista existente:</p>
+                <div className="max-h-40 overflow-y-auto space-y-1.5 pr-1">
+                  {userPlaylists.length === 0 ? (
+                    <p className="text-xs text-zinc-500 py-2">No tienes playlists creadas aún.</p>
+                  ) : (
+                    userPlaylists.map((pl) => (
+                      <button
+                        key={pl.id}
+                        type="button"
+                        onClick={() => addTrackToPlaylist(pl.id)}
+                        className="w-full flex items-center justify-between p-2.5 rounded-xl bg-zinc-900/60 hover:bg-zinc-800 border border-zinc-800/80 transition text-left text-xs text-zinc-200 hover:text-white"
+                      >
+                        <span className="font-medium truncate">{pl.name}</span>
+                        <span className="text-[11px] text-zinc-500">
+                          {pl.tracks?.length || 0} temas
+                        </span>
+                      </button>
+                    ))
+                  )}
+                </div>
+
+                {/* Crear nueva playlist rápida */}
+                <form onSubmit={handleCreateAndAdd} className="pt-2 border-t border-zinc-900 space-y-2">
+                  <p className="text-xs font-semibold text-zinc-400">O crea una nueva playlist:</p>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={newPlaylistName}
+                      onChange={(e) => setNewPlaylistName(e.target.value)}
+                      placeholder="Nombre de la nueva lista..."
+                      className="flex-1 bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-green-500"
+                    />
+                    <button
+                      type="submit"
+                      disabled={!newPlaylistName.trim()}
+                      className="bg-green-500 hover:bg-green-400 disabled:opacity-50 text-black font-semibold px-3 py-2 rounded-xl text-xs flex items-center gap-1 transition"
+                    >
+                      <Plus size={14} />
+                      <span>Crear</span>
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

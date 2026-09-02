@@ -19,8 +19,20 @@ import {
   Edit2, 
   Loader2, 
   X, 
-  Check 
+  Check,
+  Heart,
+  Radio as RadioIcon,
+  Globe,
+  UploadCloud
 } from 'lucide-react';
+
+interface RadioStation {
+  id: string;
+  name: string;
+  genre: string;
+  streamUrl: string;
+  logoUrl?: string;
+}
 
 const DEFAULT_COVERS = [
   'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=400&h=400&fit=crop',
@@ -67,14 +79,21 @@ const INITIAL_ALBUMS: Album[] = [
 ];
 
 export default function LibraryPage() {
-  const [filter, setFilter] = useState<'all' | 'songs' | 'albums' | 'playlists'>('all');
+  const [filter, setFilter] = useState<'favorites' | 'all' | 'songs' | 'albums' | 'playlists'>('favorites');
+  const [favSubTab, setFavSubTab] = useState<'local' | 'explore' | 'radio'>('local');
   const [searchTerm, setSearchTerm] = useState('');
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
 
+  // Datos
   const [tracks, setTracks] = useState<Track[]>([]);
   const [albums, setAlbums] = useState<Album[]>(INITIAL_ALBUMS);
   const [playlists, setPlaylists] = useState<Playlist[]>(INITIAL_PLAYLISTS);
-  
+
+  // Favoritas (3 Fuentes)
+  const [favLocalTrackIds, setFavLocalTrackIds] = useState<string[]>([]);
+  const [favExploreTracks, setFavExploreTracks] = useState<Track[]>([]);
+  const [favRadioStations, setFavRadioStations] = useState<RadioStation[]>([]);
+
   const [loading, setLoading] = useState(true);
   const [deletingTrackId, setDeletingTrackId] = useState<string | null>(null);
 
@@ -85,7 +104,7 @@ export default function LibraryPage() {
   const [playlistDesc, setPlaylistDesc] = useState('');
   const [selectedTrackIds, setSelectedTrackIds] = useState<string[]>([]);
 
-  const { currentTrack, isPlaying, setQueue, togglePlay } = usePlayerStore();
+  const { currentTrack, isPlaying, setTrack, setQueue, togglePlay } = usePlayerStore();
 
   useEffect(() => {
     async function loadLibraryData() {
@@ -110,7 +129,7 @@ export default function LibraryPage() {
           }
         }
 
-        // 3. Cargar Playlists personalizadas de localStorage
+        // 3. Cargar Playlists de localStorage
         const savedPlaylists = localStorage.getItem('rokola_custom_playlists');
         if (savedPlaylists) {
           try {
@@ -122,6 +141,39 @@ export default function LibraryPage() {
             console.error('Error cargando playlists locales:', e);
           }
         }
+
+        // 4. Favoritas Locales (IDs)
+        const savedFavLocal = localStorage.getItem('rokola_favs_local_ids');
+        if (savedFavLocal) setFavLocalTrackIds(JSON.parse(savedFavLocal));
+
+        // 5. Favoritas de Explorar (Objetos Track)
+        const savedFavExplore = localStorage.getItem('rokola_favs_explore');
+        if (savedFavExplore) setFavExploreTracks(JSON.parse(savedFavExplore));
+
+        // 6. Favoritas de Radio
+        const savedFavRadio = localStorage.getItem('rokola_favs_radio');
+        if (savedFavRadio) {
+          setFavRadioStations(JSON.parse(savedFavRadio));
+        } else {
+          const defaultRadios: RadioStation[] = [
+            {
+              id: 'rad-1',
+              name: 'Ibiza Global Radio',
+              genre: 'Electrónica / Chill',
+              streamUrl: 'https://live.ibizaglobalradio.com/ibizaglobalradio.mp3',
+              logoUrl: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=200&h=200&fit=crop',
+            },
+            {
+              id: 'rad-2',
+              name: 'Smooth Jazz 24/7',
+              genre: 'Jazz & Soul',
+              streamUrl: 'https://streaming.exclusive.radio/er/smoothjazz/icecast.audio',
+              logoUrl: 'https://images.unsplash.com/photo-1511192336575-5a79af67a629?w=200&h=200&fit=crop',
+            },
+          ];
+          setFavRadioStations(defaultRadios);
+          localStorage.setItem('rokola_favs_radio', JSON.stringify(defaultRadios));
+        }
       } catch (err) {
         console.error('Error cargando biblioteca:', err);
       } finally {
@@ -131,6 +183,49 @@ export default function LibraryPage() {
 
     loadLibraryData();
   }, []);
+
+  // Alternar favorito de música subida local
+  const toggleFavLocal = (e: React.MouseEvent, trackId: string) => {
+    e.stopPropagation();
+    let updated: string[];
+    if (favLocalTrackIds.includes(trackId)) {
+      updated = favLocalTrackIds.filter((id) => id !== trackId);
+    } else {
+      updated = [...favLocalTrackIds, trackId];
+    }
+    setFavLocalTrackIds(updated);
+    localStorage.setItem('rokola_favs_local_ids', JSON.stringify(updated));
+  };
+
+  // Quitar favorito de Explorar
+  const removeFavExplore = (e: React.MouseEvent, trackId: string) => {
+    e.stopPropagation();
+    const updated = favExploreTracks.filter((t) => t.id !== trackId);
+    setFavExploreTracks(updated);
+    localStorage.setItem('rokola_favs_explore', JSON.stringify(updated));
+  };
+
+  // Quitar estación de Radio
+  const removeFavRadio = (e: React.MouseEvent, radioId: string) => {
+    e.stopPropagation();
+    const updated = favRadioStations.filter((r) => r.id !== radioId);
+    setFavRadioStations(updated);
+    localStorage.setItem('rokola_favs_radio', JSON.stringify(updated));
+  };
+
+  // Reproducir estación de radio en vivo
+  const handlePlayRadio = (station: RadioStation) => {
+    const radioTrack: Track = {
+      id: `radio-${station.id}`,
+      title: station.name,
+      artist: 'Transmisión en Vivo',
+      album: station.genre,
+      duration: 0,
+      audioUrl: station.streamUrl,
+      coverUrl: station.logoUrl || DEFAULT_COVERS[0],
+    };
+    setTrack(radioTrack);
+  };
 
   // Eliminar canción del servidor
   const handleDeleteTrack = async (e: React.MouseEvent, trackId: string, trackTitle: string) => {
@@ -143,6 +238,12 @@ export default function LibraryPage() {
       const res = await fetch(`/api/tracks/${trackId}`, { method: 'DELETE' });
       if (res.ok) {
         setTracks((prev) => prev.filter((t) => t.id !== trackId));
+        // Si estaba en favoritos locales, se quita también
+        setFavLocalTrackIds((prev) => {
+          const updated = prev.filter((id) => id !== trackId);
+          localStorage.setItem('rokola_favs_local_ids', JSON.stringify(updated));
+          return updated;
+        });
       } else {
         alert('No se pudo eliminar la canción del servidor.');
       }
@@ -245,10 +346,25 @@ export default function LibraryPage() {
     return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
   };
 
+  // Filtros de búsqueda reactivos
   const filteredTracks = tracks.filter(
     (t) =>
       t.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       t.artist.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const favoriteLocalTracks = filteredTracks.filter((t) => favLocalTrackIds.includes(t.id));
+
+  const filteredExploreFavs = favExploreTracks.filter(
+    (t) =>
+      t.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      t.artist.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const filteredRadios = favRadioStations.filter(
+    (r) =>
+      r.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      r.genre.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const filteredAlbums = albums.filter(
@@ -270,23 +386,23 @@ export default function LibraryPage() {
             Tu Biblioteca
           </h1>
           <p className="text-zinc-400 text-sm mt-1">
-            Gestiona tus canciones, álbumes y listas de reproducción personalizadas
+            Gestiona tus canciones favoritas, música subida, álbumes y playlists
           </p>
         </div>
 
         <div className="flex items-center gap-3">
           <Link
             href="/upload"
-            className="flex items-center gap-2 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-white font-semibold text-sm px-4 py-2.5 rounded-full transition shadow-sm"
+            className="flex items-center gap-2 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-white font-semibold text-xs px-4 py-2.5 rounded-full transition shadow-sm cursor-pointer"
           >
-            <Plus size={16} />
+            <UploadCloud size={16} />
             <span>Subir Canción</span>
           </Link>
           <button
             onClick={openCreatePlaylistModal}
-            className="flex items-center gap-2 bg-green-500 hover:bg-green-400 text-black font-semibold text-sm px-5 py-2.5 rounded-full transition transform hover:scale-105 active:scale-95 shadow-md cursor-pointer"
+            className="flex items-center gap-2 bg-green-500 hover:bg-green-400 text-black font-semibold text-xs px-4 py-2.5 rounded-full transition transform hover:scale-105 active:scale-95 shadow-md cursor-pointer"
           >
-            <ListMusic size={16} />
+            <Plus size={16} />
             <span>Nueva Playlist</span>
           </button>
         </div>
@@ -295,6 +411,16 @@ export default function LibraryPage() {
       {/* 2. Filtros y Búsqueda */}
       <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 pb-2 border-b border-zinc-900">
         <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0 scrollbar-none">
+          <button
+            onClick={() => setFilter('favorites')}
+            className={`px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition cursor-pointer flex items-center gap-1.5 ${
+              filter === 'favorites' ? 'bg-white text-black' : 'bg-zinc-900 text-zinc-400 hover:text-white hover:bg-zinc-800'
+            }`}
+          >
+            <Heart size={13} fill={filter === 'favorites' ? 'black' : 'none'} />
+            <span>Favoritas</span>
+          </button>
+
           {(['all', 'songs', 'albums', 'playlists'] as const).map((tab) => (
             <button
               key={tab}
@@ -305,7 +431,7 @@ export default function LibraryPage() {
                   : 'bg-zinc-900 text-zinc-400 hover:text-white hover:bg-zinc-800'
               }`}
             >
-              {tab === 'all' ? 'Todo' : tab === 'songs' ? 'Canciones' : tab === 'albums' ? 'Álbumes' : 'Playlists'}
+              {tab === 'all' ? 'Todo' : tab === 'songs' ? `Canciones (${tracks.length})` : tab === 'albums' ? `Álbumes (${albums.length})` : `Playlists (${playlists.length})`}
             </button>
           ))}
         </div>
@@ -341,7 +467,204 @@ export default function LibraryPage() {
         </div>
       </div>
 
-      {/* 3. Banner Reproductor de Mis Canciones Subidas */}
+      {/* 3. SECCIÓN FAVORITAS CON SUS 3 SUB-PESTAÑAS */}
+      {filter === 'favorites' && (
+        <div className="space-y-6">
+          <div className="flex items-center gap-2 p-1 bg-zinc-900/90 border border-zinc-800 rounded-xl w-fit">
+            <button
+              onClick={() => setFavSubTab('local')}
+              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                favSubTab === 'local' ? 'bg-zinc-800 text-green-400 shadow' : 'text-zinc-400 hover:text-white'
+              }`}
+            >
+              <UploadCloud size={14} />
+              <span>Música Subida ({favoriteLocalTracks.length})</span>
+            </button>
+            <button
+              onClick={() => setFavSubTab('explore')}
+              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                favSubTab === 'explore' ? 'bg-zinc-800 text-green-400 shadow' : 'text-zinc-400 hover:text-white'
+              }`}
+            >
+              <Globe size={14} />
+              <span>Música de Explorar ({filteredExploreFavs.length})</span>
+            </button>
+            <button
+              onClick={() => setFavSubTab('radio')}
+              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
+                favSubTab === 'radio' ? 'bg-zinc-800 text-green-400 shadow' : 'text-zinc-400 hover:text-white'
+              }`}
+            >
+              <RadioIcon size={14} />
+              <span>Radios Favoritas ({filteredRadios.length})</span>
+            </button>
+          </div>
+
+          {/* Favoritas: Local */}
+          {favSubTab === 'local' && (
+            <div className="space-y-4">
+              {favoriteLocalTracks.length === 0 ? (
+                <div className="p-8 border border-dashed border-zinc-800 rounded-2xl text-center text-zinc-500 text-xs">
+                  No has marcado canciones locales como favoritas. Pulsa el corazón en la pestaña &quot;Canciones&quot; para añadirlas aquí.
+                </div>
+              ) : viewMode === 'list' ? (
+                <div className="space-y-1">
+                  {favoriteLocalTracks.map((track, idx) => {
+                    const isThisPlaying = currentTrack?.id === track.id && isPlaying;
+                    return (
+                      <div
+                        key={track.id}
+                        onClick={() => setQueue(favoriteLocalTracks, idx)}
+                        className="grid grid-cols-12 items-center px-4 py-3 rounded-lg hover:bg-zinc-900/60 cursor-pointer group transition text-sm"
+                      >
+                        <span className="col-span-1 text-zinc-500 font-medium text-xs">{idx + 1}</span>
+                        <div className="col-span-8 flex items-center gap-3 min-w-0">
+                          <img src={track.coverUrl} alt={track.title} className="w-10 h-10 rounded object-cover flex-shrink-0" />
+                          <div className="truncate">
+                            <p className={`font-semibold truncate ${isThisPlaying ? 'text-green-400' : 'text-white'}`}>
+                              {track.title}
+                            </p>
+                            <p className="text-xs text-zinc-400 truncate">{track.artist}</p>
+                          </div>
+                        </div>
+                        <div className="col-span-3 flex items-center justify-end gap-3">
+                          <span className="text-xs text-zinc-400">{formatDuration(track.duration)}</span>
+                          <button
+                            onClick={(e) => toggleFavLocal(e, track.id)}
+                            className="text-red-500 hover:text-zinc-500 transition p-1 cursor-pointer"
+                            title="Quitar de favoritas"
+                          >
+                            <Heart size={16} fill="currentColor" />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                  {favoriteLocalTracks.map((track, idx) => {
+                    const isThisPlaying = currentTrack?.id === track.id && isPlaying;
+                    return (
+                      <div
+                        key={track.id}
+                        onClick={() => setQueue(favoriteLocalTracks, idx)}
+                        className="bg-zinc-900/40 hover:bg-zinc-900/80 p-3.5 rounded-xl border border-zinc-800/60 hover:border-zinc-700 transition cursor-pointer group flex flex-col justify-between shadow-sm relative"
+                      >
+                        <div className="aspect-square mb-3 overflow-hidden rounded-lg relative bg-zinc-950">
+                          <img src={track.coverUrl} alt={track.title} className="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
+                          <button
+                            onClick={(e) => toggleFavLocal(e, track.id)}
+                            className="absolute top-2 right-2 p-1.5 bg-black/60 backdrop-blur-md rounded-lg text-red-500 transition"
+                            title="Quitar de favoritas"
+                          >
+                            <Heart size={14} fill="currentColor" />
+                          </button>
+                        </div>
+                        <div className="truncate">
+                          <h4 className={`font-semibold text-xs truncate ${isThisPlaying ? 'text-green-400' : 'text-white'}`}>{track.title}</h4>
+                          <p className="text-[11px] text-zinc-400 truncate mt-0.5">{track.artist}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Favoritas: Explorar */}
+          {favSubTab === 'explore' && (
+            <div className="space-y-4">
+              {filteredExploreFavs.length === 0 ? (
+                <div className="p-8 border border-dashed border-zinc-800 rounded-2xl text-center text-zinc-500 text-xs">
+                  No has guardado canciones desde Explorar. Busca temas en el catálogo y pulsa el corazón para añadirlos aquí.
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  {filteredExploreFavs.map((track, idx) => {
+                    const isThisPlaying = currentTrack?.id === track.id && isPlaying;
+                    return (
+                      <div
+                        key={track.id}
+                        onClick={() => setQueue(filteredExploreFavs, idx)}
+                        className="grid grid-cols-12 items-center px-4 py-3 rounded-lg hover:bg-zinc-900/60 cursor-pointer group transition text-sm"
+                      >
+                        <span className="col-span-1 text-zinc-500 font-medium text-xs">{idx + 1}</span>
+                        <div className="col-span-8 flex items-center gap-3 min-w-0">
+                          <img src={track.coverUrl} alt={track.title} className="w-10 h-10 rounded object-cover flex-shrink-0" />
+                          <div className="truncate">
+                            <p className={`font-semibold truncate ${isThisPlaying ? 'text-green-400' : 'text-white'}`}>
+                              {track.title}
+                            </p>
+                            <p className="text-xs text-zinc-400 truncate">{track.artist}</p>
+                          </div>
+                        </div>
+                        <div className="col-span-3 flex items-center justify-end gap-3">
+                          <span className="text-xs text-zinc-400">{formatDuration(track.duration)}</span>
+                          <button
+                            onClick={(e) => removeFavExplore(e, track.id)}
+                            className="text-red-500 hover:text-zinc-500 transition p-1 cursor-pointer"
+                            title="Quitar de favoritas"
+                          >
+                            <Heart size={16} fill="currentColor" />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Favoritas: Radio */}
+          {favSubTab === 'radio' && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+              {filteredRadios.length === 0 ? (
+                <div className="col-span-full p-8 border border-dashed border-zinc-800 rounded-2xl text-center text-zinc-500 text-xs">
+                  No tienes emisoras de radio guardadas como favoritas.
+                </div>
+              ) : (
+                filteredRadios.map((station) => (
+                  <div
+                    key={station.id}
+                    onClick={() => handlePlayRadio(station)}
+                    className="p-4 rounded-xl bg-zinc-900/60 hover:bg-zinc-800 border border-zinc-800/80 transition flex items-center justify-between group cursor-pointer shadow-sm"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-12 h-12 rounded-lg bg-green-500/10 border border-green-500/20 flex items-center justify-center text-green-400 flex-shrink-0">
+                        <RadioIcon size={22} />
+                      </div>
+                      <div className="truncate">
+                        <h4 className="text-sm font-semibold text-white truncate group-hover:text-green-400 transition">
+                          {station.name}
+                        </h4>
+                        <p className="text-xs text-zinc-400 truncate">{station.genre}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      <button
+                        onClick={(e) => removeFavRadio(e, station.id)}
+                        className="p-2 text-red-500 hover:text-zinc-400 transition cursor-pointer"
+                        title="Quitar radio favorita"
+                      >
+                        <Heart size={16} fill="currentColor" />
+                      </button>
+                      <div className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center text-black shadow-md">
+                        <Play size={14} fill="black" className="ml-0.5" />
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 4. Banner Reproductor de Mis Canciones Subidas */}
       {tracks.length > 0 && (filter === 'all' || filter === 'songs') && (
         <section>
           <div
@@ -372,7 +695,7 @@ export default function LibraryPage() {
         </section>
       )}
 
-      {/* 4. Contenido General */}
+      {/* 5. Contenido General */}
       {loading ? (
         <div className="py-20 flex flex-col items-center justify-center gap-3 text-zinc-500">
           <Loader2 size={32} className="animate-spin text-green-500" />
@@ -396,12 +719,13 @@ export default function LibraryPage() {
                     <span className="col-span-1">#</span>
                     <span className="col-span-6 md:col-span-7">Título</span>
                     <span className="col-span-3 md:col-span-2 text-right">Duración</span>
-                    <span className="col-span-2 text-right">Acción</span>
+                    <span className="col-span-2 text-right">Acciones</span>
                   </div>
 
                   {filteredTracks.map((track, index) => {
                     const isThisPlaying = currentTrack?.id === track.id && isPlaying;
                     const isDeleting = deletingTrackId === track.id;
+                    const isFav = favLocalTrackIds.includes(track.id);
 
                     return (
                       <div
@@ -415,11 +739,11 @@ export default function LibraryPage() {
 
                         <div className="col-span-6 md:col-span-7 flex items-center gap-3 min-w-0">
                           <img
-                            src={track.coverUrl || 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=200&h=200&fit=crop'}
+                            src={track.coverUrl || DEFAULT_COVERS[0]}
                             alt={track.title}
                             className="w-10 h-10 rounded object-cover flex-shrink-0 bg-zinc-900"
                             onError={(e) => {
-                              e.currentTarget.src = 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=200&h=200&fit=crop';
+                              e.currentTarget.src = DEFAULT_COVERS[0];
                             }}
                           />
                           <div className="truncate">
@@ -434,7 +758,16 @@ export default function LibraryPage() {
                           {formatDuration(track.duration)}
                         </span>
 
-                        <div className="col-span-2 text-right">
+                        <div className="col-span-2 flex items-center justify-end gap-1.5">
+                          <button
+                            onClick={(e) => toggleFavLocal(e, track.id)}
+                            className={`p-1.5 rounded-lg transition cursor-pointer ${
+                              isFav ? 'text-red-500' : 'text-zinc-500 hover:text-white'
+                            }`}
+                            title={isFav ? 'Quitar de favoritas' : 'Añadir a favoritas'}
+                          >
+                            <Heart size={16} fill={isFav ? 'currentColor' : 'none'} />
+                          </button>
                           <button
                             onClick={(e) => handleDeleteTrack(e, track.id, track.title)}
                             disabled={isDeleting}
@@ -457,6 +790,7 @@ export default function LibraryPage() {
                   {filteredTracks.map((track, index) => {
                     const isThisPlaying = currentTrack?.id === track.id && isPlaying;
                     const isDeleting = deletingTrackId === track.id;
+                    const isFav = favLocalTrackIds.includes(track.id);
 
                     return (
                       <div
@@ -466,25 +800,36 @@ export default function LibraryPage() {
                       >
                         <div className="aspect-square mb-3 overflow-hidden rounded-lg relative bg-zinc-950">
                           <img
-                            src={track.coverUrl || 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300&h=300&fit=crop'}
+                            src={track.coverUrl || DEFAULT_COVERS[0]}
                             alt={track.title}
                             className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
                             onError={(e) => {
-                              e.currentTarget.src = 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300&h=300&fit=crop';
+                              e.currentTarget.src = DEFAULT_COVERS[0];
                             }}
                           />
                           <div className="absolute bottom-2 right-2 w-8 h-8 bg-green-500 rounded-full flex items-center justify-center text-black opacity-0 group-hover:opacity-100 transition transform translate-y-2 group-hover:translate-y-0 shadow-lg">
                             {isThisPlaying ? <Pause size={14} fill="black" /> : <Play size={14} fill="black" className="ml-0.5" />}
                           </div>
 
-                          <button
-                            onClick={(e) => handleDeleteTrack(e, track.id, track.title)}
-                            disabled={isDeleting}
-                            className="absolute top-2 right-2 p-1.5 bg-black/60 backdrop-blur-md rounded-lg text-zinc-400 hover:text-red-400 transition opacity-0 group-hover:opacity-100"
-                            title="Eliminar canción"
-                          >
-                            {isDeleting ? <Loader2 size={13} className="animate-spin text-red-400" /> : <Trash2 size={13} />}
-                          </button>
+                          <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
+                            <button
+                              onClick={(e) => toggleFavLocal(e, track.id)}
+                              className={`p-1.5 bg-black/60 backdrop-blur-md rounded-lg transition ${
+                                isFav ? 'text-red-500' : 'text-zinc-400 hover:text-white'
+                              }`}
+                              title={isFav ? 'Quitar de favoritas' : 'Añadir a favoritas'}
+                            >
+                              <Heart size={13} fill={isFav ? 'currentColor' : 'none'} />
+                            </button>
+                            <button
+                              onClick={(e) => handleDeleteTrack(e, track.id, track.title)}
+                              disabled={isDeleting}
+                              className="p-1.5 bg-black/60 backdrop-blur-md rounded-lg text-zinc-400 hover:text-red-400 transition"
+                              title="Eliminar canción"
+                            >
+                              {isDeleting ? <Loader2 size={13} className="animate-spin text-red-400" /> : <Trash2 size={13} />}
+                            </button>
+                          </div>
                         </div>
 
                         <div className="truncate">
@@ -563,14 +908,14 @@ export default function LibraryPage() {
                         <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
                           <button
                             onClick={(e) => openEditPlaylistModal(pl, e)}
-                            className="p-1.5 bg-black/70 hover:bg-zinc-800 text-zinc-300 hover:text-white rounded-lg backdrop-blur-sm transition"
+                            className="p-1.5 bg-black/70 hover:bg-zinc-800 text-zinc-300 hover:text-white rounded-lg backdrop-blur-sm transition cursor-pointer"
                             title="Editar Playlist"
                           >
                             <Edit2 size={13} />
                           </button>
                           <button
                             onClick={(e) => handleDeletePlaylist(pl.id, pl.name, e)}
-                            className="p-1.5 bg-black/70 hover:bg-red-500/20 text-zinc-300 hover:text-red-400 rounded-lg backdrop-blur-sm transition"
+                            className="p-1.5 bg-black/70 hover:bg-red-500/20 text-zinc-300 hover:text-red-400 rounded-lg backdrop-blur-sm transition cursor-pointer"
                             title="Eliminar Playlist"
                           >
                             <Trash2 size={13} />
@@ -637,7 +982,7 @@ export default function LibraryPage() {
         </div>
       )}
 
-      {/* 5. Modal Crear / Editar Playlist */}
+      {/* 6. Modal Crear / Editar Playlist */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-zinc-950 border border-zinc-800 rounded-2xl p-6 max-w-lg w-full shadow-2xl space-y-4 animate-in fade-in zoom-in-95 max-h-[90vh] flex flex-col">
@@ -693,7 +1038,7 @@ export default function LibraryPage() {
                           selectedTrackIds.length === tracks.length ? [] : tracks.map((t) => t.id)
                         )
                       }
-                      className="text-[11px] text-zinc-400 hover:text-green-400 transition"
+                      className="text-[11px] text-zinc-400 hover:text-green-400 transition cursor-pointer"
                     >
                       {selectedTrackIds.length === tracks.length ? 'Deseleccionar todas' : 'Marcar todas'}
                     </button>
