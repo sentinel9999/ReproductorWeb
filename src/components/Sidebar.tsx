@@ -12,6 +12,7 @@ import {
   Radio, 
   Flame, 
   UploadCloud,
+  Headphones,
   Menu, 
   X, 
   Search,
@@ -21,7 +22,7 @@ import {
   PinOff
 } from 'lucide-react';
 
-const CATEGORIES = [
+const BASE_CATEGORIES = [
   { name: 'Inicio', href: '/', icon: Home },
   { name: 'Explorar', href: '/explore', icon: Compass },
   { name: 'Tu Biblioteca', href: '/library', icon: Library },
@@ -40,6 +41,12 @@ export default function Sidebar() {
   const closeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const { currentUser, isAuthenticated, logout } = useAuthStore();
+
+  // Modo DJ solo disponible para usuarios autenticados
+  const categories = [
+    ...BASE_CATEGORIES,
+    ...(isAuthenticated ? [{ name: 'Modo DJ', href: '/dj', icon: Headphones }] : []),
+  ];
 
   const handleMouseEnter = () => {
     if (closeTimeoutRef.current) {
@@ -166,7 +173,7 @@ export default function Sidebar() {
             <p className="text-[11px] font-bold text-zinc-500 uppercase px-3 mb-2 tracking-wider">
               Menú Principal
             </p>
-            {CATEGORIES.map((cat) => {
+            {categories.map((cat) => {
               const Icon = cat.icon;
               const isActive = pathname === cat.href;
 
