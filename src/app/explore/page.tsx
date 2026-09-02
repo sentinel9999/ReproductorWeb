@@ -47,7 +47,7 @@ function ExploreContent() {
     setSearchQuery(initialQuery);
   }, [initialQuery]);
 
-  // Consulta al backend con debounce para evitar llamadas excesivas
+  // Consulta al backend con debounce para evitar llamadas continuas
   useEffect(() => {
     const term = searchQuery.trim();
     if (!term) {
@@ -142,7 +142,8 @@ function ExploreContent() {
                 return (
                   <div
                     key={track.id}
-                    className="bg-zinc-900/50 hover:bg-zinc-800/80 p-3 rounded-xl border border-zinc-800/80 hover:border-zinc-700 transition flex items-center justify-between group shadow-sm"
+                    onClick={() => setQueue(searchResults, index)}
+                    className="bg-zinc-900/60 hover:bg-zinc-800/80 active:bg-zinc-800 p-3 rounded-xl border border-zinc-800/80 hover:border-zinc-700 transition flex items-center justify-between group shadow-sm cursor-pointer"
                   >
                     <div className="flex items-center gap-3 min-w-0">
                       <img
@@ -166,10 +167,18 @@ function ExploreContent() {
                           {formatDuration(track.duration)}
                         </span>
                       )}
+
+                      {/* Botón Play: siempre visible en móvil (opacity-100) y solo en hover en escritorio (md:opacity-0) */}
                       <button
-                        onClick={() => setQueue(searchResults, index)}
-                        className={`w-9 h-9 bg-green-500 rounded-full flex items-center justify-center text-black shadow-md transition transform group-hover:scale-100 cursor-pointer ${
-                          isThisTrackPlaying ? 'opacity-100 scale-100' : 'opacity-0 group-hover:opacity-100 scale-90'
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setQueue(searchResults, index);
+                        }}
+                        className={`w-9 h-9 bg-green-500 rounded-full flex items-center justify-center text-black shadow-md transition transform cursor-pointer ${
+                          isThisTrackPlaying
+                            ? 'opacity-100 scale-100'
+                            : 'opacity-100 scale-100 md:opacity-0 md:scale-90 md:group-hover:opacity-100 md:group-hover:scale-100'
                         }`}
                         aria-label="Reproducir"
                       >

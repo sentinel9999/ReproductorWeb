@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -13,10 +13,12 @@ import {
   Flame, 
   UploadCloud,
   Menu, 
-  X,
+  X, 
   Search,
   LogIn,
-  LogOut
+  LogOut,
+  Pin,
+  PinOff
 } from 'lucide-react';
 
 const CATEGORIES = [
@@ -30,58 +32,126 @@ const CATEGORIES = [
 ];
 
 export default function Sidebar() {
-  const [isOpen, setIsOpen] = useState(true);
+  const [isOpen, setIsOpen] = useState(false);
+  const [isPinned, setIsPinned] = useState(false); // Permite fijarla si no quieres que se cierre
   const [searchQuery, setSearchQuery] = useState('');
   const pathname = usePathname();
   const router = useRouter();
+  const closeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Usamos currentUser correctamente según el store de Zustand
   const { currentUser, isAuthenticated, logout } = useAuthStore();
+
+  // Abrir de inmediato al entrar con el mouse
+  const handleMouseEnter = () => {
+    if (closeTimeoutRef.current) {
+      clearTimeout(closeTimeoutRef.current);
+      closeTimeoutRef.current = null;
+    }
+    setIsOpen(true);
+  };
+
+  // Cerrar suavemente al salir el mouse (solo si no está fijada)
+  const handleMouseLeave = () => {
+    if (isPinned) return;
+    closeTimeoutRef.current = setTimeout(() => {
+      setIsOpen(false);
+    }, 200); // 200ms de gracia para evitar cierres accidentales
+  };
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
       router.push(`/explore?q=${encodeURIComponent(searchQuery.trim())}`);
+      if (!isPinned) setIsOpen(false);
+    }
+  };
+
+  const handleNavClick = () => {
+    // En móviles o si no está fijada, se contrae al elegir sección
+    if (!isPinned || window.innerWidth < 768) {
+      setIsOpen(false);
     }
   };
 
   return (
     <>
-      {/* Botón flotante para reabrir menú en móviles o cuando está cerrado */}
-      {!isOpen && (
-        <button
-          onClick={() => setIsOpen(true)}
-          className="fixed top-4 left-4 z-40 p-2 bg-zinc-900 border border-zinc-800 rounded-lg text-zinc-300 hover:text-white cursor-pointer shadow-lg transition hover:scale-105"
-          aria-label="Abrir menú"
-        >
-          <Menu size={20} />
-        </button>
+      {/* 1. Sensor invisible en el borde izquierdo de la pantalla (Desktop) */}
+      <div
+        onMouseEnter={handleMouseEnter}
+        className="fixed top-0 left-0 w-3 h-full z-40 hidden md:block"
+        aria-hidden="true"
+      />
+
+      {/* 2. Botón flotante superior (se abre al hacer clic o al pasar el cursor) */}
+      <button
+        type="button"
+        onMouseEnter={handleMouseEnter}
+        onClick={() => setIsOpen(!isOpen)}
+        className={`fixed top-3 left-3 z-40 p-2.5 bg-zinc-900/90 hover:bg-zinc-800 text-zinc-300 hover:text-white rounded-xl border border-zinc-800 shadow-xl backdrop-blur-md transition-all duration-200 cursor-pointer flex items-center gap-2 ${
+          isOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'
+        }`}
+        aria-label="Abrir menú"
+      >
+        <Menu size={18} />
+        <span className="text-xs font-semibold md:hidden">Menú</span>
+      </button>
+
+      {/* 3. Fondo oscuro en Móviles al abrir */}
+      {isOpen && (
+        <div
+          onClick={() => setIsOpen(false)}
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm z-40 md:hidden animate-in fade-in duration-200"
+        />
       )}
 
-      {/* Contenedor Lateral */}
+      {/* 4. Barra Lateral Desplegable */}
       <aside
-        className={`fixed top-0 left-0 h-[calc(100vh-5rem)] bg-zinc-950 border-r border-zinc-800/80 transition-all duration-300 z-30 flex flex-col justify-between ${
-          isOpen ? 'w-64 translate-x-0' : '-translate-x-full w-64'
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+        className={`fixed top-0 left-0 h-[calc(100vh-5rem)] bg-zinc-950/95 backdrop-blur-xl border-r border-zinc-800/80 transition-transform duration-300 ease-out z-50 flex flex-col justify-between w-64 shadow-2xl ${
+          isOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        {/* Parte Superior: Logo, Buscador y Categorías */}
+        {/* Cabecera, Buscador y Categorías */}
         <div className="flex flex-col min-h-0 flex-1">
-          {/* 1. Cabecera */}
           <div className="flex items-center justify-between p-5 border-b border-zinc-900">
-            <Link href="/" className="font-extrabold text-xl text-white tracking-wide flex items-center gap-2">
+            <Link 
+              href="/" 
+              onClick={handleNavClick}
+              className="font-extrabold text-xl text-white tracking-wide flex items-center gap-2"
+            >
               <span className="text-green-500">Rokola</span>
               <span className="text-xs bg-zinc-800 text-zinc-400 px-2 py-0.5 rounded font-normal">Web</span>
             </Link>
-            <button
-              onClick={() => setIsOpen(false)}
-              className="p-1 rounded-md text-zinc-400 hover:text-white hover:bg-zinc-800 cursor-pointer transition md:hidden"
-              aria-label="Cerrar menú"
-            >
-              <X size={20} />
-            </button>
+
+            <div className="flex items-center gap-1">
+              {/* Botón para Fijar/Desfijar en PC */}
+              <button
+                type="button"
+                onClick={() => setIsPinned(!isPinned)}
+                className={`p-1.5 rounded-lg transition hidden md:block cursor-pointer ${
+                  isPinned 
+                    ? 'text-green-400 bg-green-500/10 border border-green-500/30' 
+                    : 'text-zinc-400 hover:text-white hover:bg-zinc-800'
+                }`}
+                title={isPinned ? 'Desfijar (cerrar al retirar mouse)' : 'Fijar menú abierto'}
+              >
+                {isPinned ? <Pin size={17} /> : <PinOff size={17} />}
+              </button>
+
+              {/* Botón cerrar en móviles */}
+              <button
+                type="button"
+                onClick={() => setIsOpen(false)}
+                className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition md:hidden cursor-pointer"
+                aria-label="Cerrar menú"
+              >
+                <X size={20} />
+              </button>
+            </div>
           </div>
 
-          {/* 2. Buscador Integrado */}
+          {/* Buscador */}
           <div className="p-4 pb-2">
             <form onSubmit={handleSearch} className="relative">
               <Search 
@@ -98,7 +168,7 @@ export default function Sidebar() {
             </form>
           </div>
 
-          {/* 3. Navegación */}
+          {/* Categorías */}
           <nav className="flex-1 p-4 pt-2 space-y-1 overflow-y-auto scrollbar-none">
             <p className="text-[11px] font-bold text-zinc-500 uppercase px-3 mb-2 tracking-wider">
               Menú Principal
@@ -111,6 +181,7 @@ export default function Sidebar() {
                 <Link
                   key={cat.href}
                   href={cat.href}
+                  onClick={handleNavClick}
                   className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition font-medium cursor-pointer ${
                     isActive
                       ? 'bg-zinc-800 text-white font-semibold'
@@ -125,12 +196,13 @@ export default function Sidebar() {
           </nav>
         </div>
 
-        {/* Parte Inferior: Perfil del Usuario Activo */}
+        {/* Perfil del Usuario / Iniciar Sesión */}
         <div className="p-3 border-t border-zinc-900 bg-zinc-950/60 flex-shrink-0">
           {isAuthenticated && currentUser ? (
             <div className="flex items-center justify-between gap-2">
               <Link
                 href="/profile"
+                onClick={handleNavClick}
                 className={`flex items-center gap-2.5 min-w-0 flex-1 p-1.5 rounded-xl transition hover:bg-zinc-900 group cursor-pointer ${
                   pathname === '/profile' ? 'bg-zinc-900/80 ring-1 ring-zinc-700' : ''
                 }`}
@@ -153,6 +225,7 @@ export default function Sidebar() {
               </Link>
 
               <button
+                type="button"
                 onClick={logout}
                 title="Cerrar sesión"
                 className="p-2 rounded-lg text-zinc-400 hover:text-red-400 hover:bg-zinc-900 transition cursor-pointer flex-shrink-0"
@@ -163,6 +236,7 @@ export default function Sidebar() {
           ) : (
             <Link
               href="/login"
+              onClick={handleNavClick}
               className="flex items-center justify-center gap-2 w-full bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 hover:text-white text-xs font-medium py-2.5 rounded-lg transition shadow-sm cursor-pointer"
             >
               <LogIn size={15} />
